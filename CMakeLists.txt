@@ -1008,6 +1008,8 @@ add_library(GPU OBJECT
 	GPU/Null/NullGpu.h
 	GPU/Software/SoftGpu.cpp
 	GPU/Software/SoftGpu.h
+	GPU/Software/TransformPipeline.cpp
+	GPU/Software/TransformPipeline.h
 	GPU/ge_constants.h)
 setup_target_project(GPU GPU)
 
