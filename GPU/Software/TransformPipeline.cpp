@@ -48,9 +48,9 @@ public:
 	Vec3<T> operator * (const Vec3<T>& vec)
 	{
 		Vec3<T> ret;
-		ret.x = values[0]*vec.x + values[1]*vec.y + values[2]*vec.z;
-		ret.y = values[3]*vec.x + values[4]*vec.y + values[5]*vec.z;
-		ret.z = values[6]*vec.x + values[7]*vec.y + values[8]*vec.z;
+		ret.x = values[0]*vec.x + values[3]*vec.y + values[6]*vec.z;
+		ret.y = values[1]*vec.x + values[4]*vec.y + values[7]*vec.z;
+		ret.z = values[2]*vec.x + values[5]*vec.y + values[8]*vec.z;
 		return ret;
 	}
 
@@ -75,10 +75,10 @@ public:
 	Vec4<T> operator * (const Vec4<T>& vec)
 	{
 		Vec4<T> ret;
-		ret.x = values[0]*vec.x + values[1]*vec.y + values[2]*vec.z + values[3]*vec.w;
-		ret.y = values[4]*vec.x + values[5]*vec.y + values[6]*vec.z + values[7]*vec.w;
-		ret.z = values[8]*vec.x + values[9]*vec.y + values[10]*vec.z + values[11]*vec.w;
-		ret.w = values[12]*vec.x + values[13]*vec.y + values[14]*vec.z + values[15]*vec.w;
+		ret.x = values[0]*vec.x + values[4]*vec.y + values[8]*vec.z + values[12]*vec.w;
+		ret.y = values[1]*vec.x + values[5]*vec.y + values[9]*vec.z + values[13]*vec.w;
+		ret.z = values[2]*vec.x + values[6]*vec.y + values[10]*vec.z + values[14]*vec.w;
+		ret.w = values[3]*vec.x + values[7]*vec.y + values[11]*vec.z + values[15]*vec.w;
 		return ret;
 	}
 
@@ -119,16 +119,22 @@ ScreenCoords TransformUnit::ClipToScreen(const ClipCoords& coords)
 	float viewport_dz = vpz2 - vpz1; // TODO: -1?
 	// TODO: Check for invalid parameters (x2 < x1, etc)
 
-	ret.x = (coords.x * viewport_dx / coords.w + vpx1) * 0xFFFF;
-	ret.y = (coords.y * viewport_dy / coords.w + vpy1) * 0xFFFF;
-	ret.z = (coords.z * viewport_dz / coords.w + vpz1) * 0xFFFF;
+	ret.x = (coords.x * vpx1 / coords.w + vpx2) * 0xFFFF;
+	ret.y = (coords.y * vpy1 / coords.w + vpy2) * 0xFFFF;
+	ret.z = (coords.z * vpy1 / coords.w + vpz2) * 0xFFFF;
 	return ret;
 }
 
 DrawingCoords TransformUnit::ScreenToDrawing(const ScreenCoords& coords)
 {
 	DrawingCoords ret;
-	ret.x = (coords.x - gstate.offsetx) & 0x3ff;
-	ret.y = (coords.y - gstate.offsety) & 0x3ff;
+/*	ret.x = ((coords.x - gstate.offsetx*16)) & 0x3ff;
+	ret.y = ((coords.y - gstate.offsety*16)) & 0x3ff;
+	ret.x /= 4.f;
+	ret.y /= 4.f;*/
+	ret.x = (((u32)coords.x + (2048<<4) - (gstate.offsetx&0xffff))/16);// & 0x3ff;
+	ret.y = (((u32)coords.y + (2048<<4) - (gstate.offsety&0xffff))/16);// & 0x3ff;
+	ret.x /= 16.f;
+	ret.y /= 16.f;
 	return ret;
 }
