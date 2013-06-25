@@ -30,6 +30,13 @@ typedef Vec4<float> ClipCoords; // Range: -w <= x/y/z <= w
 typedef Vec3<fixed16, fixed16, u16> ScreenCoords;
 typedef Vec2<u10, u10> DrawingCoords; // TODO: Keep z component?
 
+struct VertexData
+{
+	ClipCoords clippos;
+	DrawingCoords drawpos;
+	Vec2<float> texturecoords;
+};
+
 class TransformUnit
 {
 public:
