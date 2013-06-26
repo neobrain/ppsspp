@@ -140,19 +140,28 @@ void TransformUnit::SubmitPrimitive(void* vertices, u32 prim_type, int vertex_co
 	vdecoder.SetVertexType(vertex_type);
 	const DecVtxFormat& vtxfmt = vdecoder.GetDecVtxFmt();
 
-	u8 buf[102400]; // yolo
+	u8 buf[1024000]; // yolo
 	vdecoder.DecodeVerts(buf, vertices, 0, vertex_count - 1);
 
 	VertexReader vreader(buf, vtxfmt, vertex_type);
 
-	// We only support triangle lists, for now.
-	for (int vtx = 0; vtx < vertex_count; vtx+=3)
-	{
-		VertexData data[3];
+	int vtcs_per_prim = 0;
+	if (prim_type == GE_PRIM_POINTS) vtcs_per_prim = 1;
+	else if (prim_type == GE_PRIM_LINES) vtcs_per_prim = 2;
+	else if (prim_type == GE_PRIM_TRIANGLES) vtcs_per_prim = 3;
+	else if (prim_type == GE_PRIM_RECTANGLES) vtcs_per_prim = 2;
+	else {
+		// TODO: Unsupported
+	}
 
-		for (unsigned int i = 0; i < 3; ++i)
+	// We only support triangle lists, for now.
+	for (int vtx = 0; vtx < vertex_count; vtx += vtcs_per_prim)
+	{
+		VertexData data[vtcs_per_prim];
+
+		for (unsigned int i = 0; i < vtcs_per_prim; ++i)
 		{
-			float pos[3];
+			float pos[vtcs_per_prim];
 			vreader.Goto(vtx+i);
 			vreader.ReadPos(pos);
 
@@ -170,6 +179,14 @@ void TransformUnit::SubmitPrimitive(void* vertices, u32 prim_type, int vertex_co
 
 		// TODO: Should do lighting here!
 
-		Clipper::ProcessTriangle(data);
+		switch (prim_type) {
+		case GE_PRIM_TRIANGLES:
+			Clipper::ProcessTriangle(data);
+			break;
+
+		case GE_PRIM_RECTANGLES:
+			Clipper::ProcessQuad(data);
+			break;
+		}
 	}
 }
