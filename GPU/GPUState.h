@@ -219,6 +219,9 @@ struct GPUgstate
 	bool isUsingPoweredDiffuseLight(int chan) const { return (ltype[chan] & 0x3) == 0x2; }
 	bool isUsingSpecularLight(int chan) const { return (ltype[chan] & 0x3) == 0x1 || (ltype[chan] & 0x3) == 0x2; }
 	bool isUsingSecondaryColor() const { return lmode & 1; }
+	bool isDirectionalLight(int chan) const { return ((ltype[chan] & 0x30)>>8) == 0; }
+	bool isPointLight(int chan) const { return ((ltype[chan] & 0x30)>>8) == 1; }
+	bool isSpotLight(int chan) const { return ((ltype[chan] & 0x30)>>8) == 2; }
 
 	unsigned int getAmbientR() const { return ambientcolor&0xFF; }
 	unsigned int getAmbientG() const { return (ambientcolor>>8)&0xFF; }
