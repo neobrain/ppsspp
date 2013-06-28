@@ -241,6 +241,10 @@ struct GPUgstate
 	unsigned int getMaterialEmissiveG() const { return (materialemissive>>8)&0xFF; }
 	unsigned int getMaterialEmissiveB() const { return (materialemissive>>16)&0xFF; }
 
+	unsigned int getLightAmbientColorR(int chan) const { return lcolor[chan*3]&0xFF; }
+	unsigned int getLightAmbientColorG(int chan) const { return (lcolor[chan*3]>>8)&0xFF; }
+	unsigned int getLightAmbientColorB(int chan) const { return (lcolor[chan*3]>>16)&0xFF; }
+
 	unsigned int getDiffuseColorR(int chan) const { return lcolor[1+chan*3]&0xFF; }
 	unsigned int getDiffuseColorG(int chan) const { return (lcolor[1+chan*3]>>8)&0xFF; }
 	unsigned int getDiffuseColorB(int chan) const { return (lcolor[1+chan*3]>>16)&0xFF; }
