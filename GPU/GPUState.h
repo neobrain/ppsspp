@@ -215,8 +215,16 @@ struct GPUgstate
 	bool isDitherEnabled() const { return ditherEnable & 1; }
 	bool isAlphaTestEnabled() const { return alphaTestEnable & 1; }
 	bool isColorTestEnabled() const { return colorTestEnable & 1; }
-	bool isTextureMapEnabled() const { return textureMapEnable & 1; }
 
+	// Texturing
+	bool isTextureMapEnabled() const { return textureMapEnable & 1; }
+	int getTextureFunction() const { return texfunc & 0x7; }
+
+	int getTextureEnvColR() const { return texenvcolor&0xFF; }
+	int getTextureEnvColG() const { return (texenvcolor>>8)&0xFF; }
+	int getTextureEnvColB() const { return (texenvcolor>>16)&0xFF; }
+
+	// Lighting
 	bool isLightingEnabled() const { return lightingEnable & 1; }
 	bool isLightChanEnabled(int chan) const { return lightEnable[chan] & 1;}
 	bool isUsingPoweredDiffuseLight(int chan) const { return (ltype[chan] & 0x3) == 0x2; }
