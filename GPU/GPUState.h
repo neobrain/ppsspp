@@ -194,6 +194,9 @@ struct GPUgstate
 	float tgenMatrix[12];
 	float boneMatrix[12 * 8];  // Eight bone matrices.
 
+	int FrameBufStride() const { return fbwidth&0x7C0; }
+	int DepthBufStride() const { return fbwidth&0x7C0; }
+
 	// Pixel Pipeline
 	bool isModeClear()   const { return clearmode & 1; }
 	bool isCullEnabled() const { return cullfaceEnable & 1; }
