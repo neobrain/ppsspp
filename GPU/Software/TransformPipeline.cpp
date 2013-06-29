@@ -23,46 +23,6 @@
 #include "Lighting.h"
 
 template<typename BaseType>
-class Mat3x3
-{
-public:
-	// Convention: first three values in arrow = first column
-	Mat3x3(const BaseType values[])
-	{
-		for (unsigned int i = 0; i < 3*3; ++i)
-		{
-			this->values[i] = values[i];
-		}
-	}
-
-	Mat3x3(BaseType _00, BaseType _01, BaseType _02, BaseType _10, BaseType _11, BaseType _12, BaseType _20, BaseType _21, BaseType _22)
-	{
-		values[0] = _00;
-		values[1] = _01;
-		values[2] = _02;
-		values[3] = _10;
-		values[4] = _11;
-		values[5] = _12;
-		values[6] = _20;
-		values[7] = _21;
-		values[8] = _22;
-	}
-
-	template<typename T>
-	Vec3<T> operator * (const Vec3<T>& vec)
-	{
-		Vec3<T> ret;
-		ret.x = values[0]*vec.x + values[3]*vec.y + values[6]*vec.z;
-		ret.y = values[1]*vec.x + values[4]*vec.y + values[7]*vec.z;
-		ret.z = values[2]*vec.x + values[5]*vec.y + values[8]*vec.z;
-		return ret;
-	}
-
-private:
-	BaseType values[3*3];
-};
-
-template<typename BaseType>
 class Mat4x4
 {
 public:
@@ -214,7 +174,7 @@ void TransformUnit::SubmitPrimitive(void* vertices, void* indices, u32 prim_type
 
 				if (vreader.hasNormal()) {
 					data[i].worldnormal = TransformUnit::ModelToWorld(data[i].normal) - Vec3<float>(gstate.worldMatrix[9], gstate.worldMatrix[10], gstate.worldMatrix[11]);
-					data[i].worldnormal /= data[i].worldnormal.Length();
+					data[i].worldnormal /= data[i].worldnormal.Length(); // TODO: Shouldn't be necessary..
 				}
 
 				Lighting::Process(data[i]);
