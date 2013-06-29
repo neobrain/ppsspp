@@ -91,6 +91,7 @@ DrawingCoords TransformUnit::ScreenToDrawing(const ScreenCoords& coords)
 	// TODO: What to do when offset > coord?
 	ret.x = (((u32)coords.x - (gstate.offsetx&0xffff))/16) & 0x3ff;
 	ret.y = (((u32)coords.y - (gstate.offsety&0xffff))/16) & 0x3ff;
+	ret.z = coords.z;
 	return ret;
 }
 
@@ -180,6 +181,7 @@ void TransformUnit::SubmitPrimitive(void* vertices, void* indices, u32 prim_type
 			} else {
 				data[i].drawpos.x = pos[0];
 				data[i].drawpos.y = pos[1];
+				data[i].drawpos.z = 0; // TODO: Not sure if that's what we should do here
 			}
 		}
 
