@@ -144,6 +144,138 @@ static inline bool DepthTestPassed(int x, int y, u16 z)
 	}
 }
 
+struct Color3;
+struct Color3Ref
+{
+	Color3Ref(int& r, int& g, int& b) : r(r), g(g), b(b) {};
+
+	void operator += (const Color3Ref& col) {
+		r += col.r;
+		g += col.g;
+		b += col.b;
+	}
+
+	void operator *= (const Color3Ref& col) {
+		r *= col.r;
+		g *= col.g;
+		b *= col.b;
+	}
+
+	void operator *= (float val) {
+		r *= val;
+		g *= val;
+		b *= val;
+	}
+
+	void operator = (const Color3Ref& col) {
+		r = col.r;
+		g = col.g;
+		b = col.b;
+	}
+
+	Color3 operator + (const Color3Ref& col) const;
+	Color3 operator - (const Color3Ref& col) const;
+	Color3 operator * (const Color3Ref& col) const;
+	Color3 operator * (int val) const;
+	Color3 operator / (int val) const;
+
+	int& r;
+	int& g;
+	int& b;
+};
+
+struct Color3 : Color3Ref
+{
+	Color3(int r, int g, int b) : Color3Ref(this->r, this->g, this->b), r(r), g(g), b(b) {}
+
+	int r, g, b;
+};
+
+Color3 Color3Ref::operator + (const Color3Ref& col) const
+{
+	return Color3(r + col.r, g + col.g, b + col.b);
+}
+
+Color3 Color3Ref::operator - (const Color3Ref& col) const
+{
+	return Color3(r - col.r, g - col.g, b - col.b);
+}
+
+Color3 Color3Ref::operator * (const Color3Ref& col) const
+{
+	return Color3(r * col.r, g * col.g, b * col.b);
+}
+
+Color3 Color3Ref::operator * (int val) const
+{
+	return Color3(r * val, g * val, b * val);
+}
+
+Color3 operator * (int val, const Color3Ref& col)
+{
+	return col * val;
+}
+
+Color3 Color3Ref::operator / (int val) const
+{
+	return Color3(r / val, g / val, b / val);
+}
+
+struct Color4Ref
+{
+	Color4Ref(int& r, int& g, int& b, int& a) : r(r), g(g), b(b), a(a) {};
+
+	Color3Ref rgb() { return Color3Ref(r, g, b); }
+
+	void operator += (const Color4Ref& col) {
+		r += col.r;
+		g += col.g;
+		b += col.b;
+		a += col.a;
+	}
+
+	void operator *= (const Color4Ref& col) {
+		r *= col.r;
+		g *= col.g;
+		b *= col.b;
+		a *= col.a;
+	}
+
+	void operator = (const Color4Ref& col) {
+		r = col.r;
+		g = col.g;
+		b = col.b;
+		a = col.a;
+	}
+
+	u32 Compactify() const { return (r&0xFF) | ((g&0xFF)<<8) | ((b&0xFF)<<16) | ((a&0xFF)<<24); }
+
+	int& r;
+	int& g;
+	int& b;
+	int& a;
+};
+
+struct Color4 : Color4Ref
+{
+	Color4(u32 rgba) : Color4Ref(r, g, b, a), r(rgba&0xFF), g((rgba>>8)&0xFF), b((rgba>>16)&0xFF), a((rgba>>24)&0xFF) {}
+	Color4(int r, int g, int b, int a) : Color4Ref(this->r, this->g, this->b, this->a), r(r), g(g), b(b), a(a) {}
+
+	Color4 operator + (const Color4Ref& col) const {
+		return Color4(r + col.r, g + col.g, b + col.b, a + col.a);
+	}
+
+	Color4 operator / (const int val) const {
+		return Color4(r / val, g / val, b / val, a / val);
+	}
+
+	Color4 operator * (const Color4Ref& col) const {
+		return Color4(r * col.r, g * col.g, b * col.b, a * col.a);
+	}
+
+	int r, g, b, a;
+};
+
 void DrawTriangle(VertexData vertexdata[3])
 {
 	DrawingCoords vertices[3] = { vertexdata[0].drawpos, vertexdata[1].drawpos, vertexdata[2].drawpos };
@@ -187,77 +319,70 @@ void DrawTriangle(VertexData vertexdata[3])
 
 				float s = (vertexdata[0].texturecoords.s * w0 / vertexdata[0].clippos.w + vertexdata[1].texturecoords.s * w1 / vertexdata[1].clippos.w + vertexdata[2].texturecoords.s * w2 / vertexdata[2].clippos.w) / den;
 				float t = (vertexdata[0].texturecoords.t * w0 / vertexdata[0].clippos.w + vertexdata[1].texturecoords.t * w1 / vertexdata[1].clippos.w + vertexdata[2].texturecoords.t * w2 / vertexdata[2].clippos.w) / den;
-				u32 prim_color = 0;
-				u32 sec_color = 0;
+				Color4 prim_color(0, 0, 0, 0);
+				Color4 sec_color(0, 0, 0, 0);
 				if ((gstate.shademodel&1) == GE_SHADE_GOURAUD) {
-					prim_color = (int)((vertexdata[0].color0.r * w0 / vertexdata[0].clippos.w + vertexdata[1].color0.r * w1 / vertexdata[1].clippos.w + vertexdata[2].color0.r * w2 / vertexdata[2].clippos.w) / den) +
-							(int)((vertexdata[0].color0.g * w0 / vertexdata[0].clippos.w + vertexdata[1].color0.g * w1 / vertexdata[1].clippos.w + vertexdata[2].color0.g * w2 / vertexdata[2].clippos.w) / den)*256 +
-							(int)((vertexdata[0].color0.b * w0 / vertexdata[0].clippos.w + vertexdata[1].color0.b * w1 / vertexdata[1].clippos.w + vertexdata[2].color0.b * w2 / vertexdata[2].clippos.w) / den)*256*256 +
-							(int)((vertexdata[0].color0.a * w0 / vertexdata[0].clippos.w + vertexdata[1].color0.a * w1 / vertexdata[1].clippos.w + vertexdata[2].color0.a * w2 / vertexdata[2].clippos.w) / den)*256*256*256;
-					sec_color = (int)((vertexdata[0].color1.r * w0 / vertexdata[0].clippos.w + vertexdata[1].color1.r * w1 / vertexdata[1].clippos.w + vertexdata[2].color1.r * w2 / vertexdata[2].clippos.w) / den) +
-							(int)((vertexdata[0].color1.g * w0 / vertexdata[0].clippos.w + vertexdata[1].color1.g * w1 / vertexdata[1].clippos.w + vertexdata[2].color1.g * w2 / vertexdata[2].clippos.w) / den)*256 +
-							(int)((vertexdata[0].color1.b * w0 / vertexdata[0].clippos.w + vertexdata[1].color1.b * w1 / vertexdata[1].clippos.w + vertexdata[2].color1.b * w2 / vertexdata[2].clippos.w) / den)*256*256;
+					prim_color.r = (int)((vertexdata[0].color0.r * w0 / vertexdata[0].clippos.w + vertexdata[1].color0.r * w1 / vertexdata[1].clippos.w + vertexdata[2].color0.r * w2 / vertexdata[2].clippos.w) / den);
+					prim_color.g = (int)((vertexdata[0].color0.g * w0 / vertexdata[0].clippos.w + vertexdata[1].color0.g * w1 / vertexdata[1].clippos.w + vertexdata[2].color0.g * w2 / vertexdata[2].clippos.w) / den);
+					prim_color.b = (int)((vertexdata[0].color0.b * w0 / vertexdata[0].clippos.w + vertexdata[1].color0.b * w1 / vertexdata[1].clippos.w + vertexdata[2].color0.b * w2 / vertexdata[2].clippos.w) / den);
+					prim_color.a = (int)((vertexdata[0].color0.a * w0 / vertexdata[0].clippos.w + vertexdata[1].color0.a * w1 / vertexdata[1].clippos.w + vertexdata[2].color0.a * w2 / vertexdata[2].clippos.w) / den);
+					sec_color.r = (int)((vertexdata[0].color1.r * w0 / vertexdata[0].clippos.w + vertexdata[1].color1.r * w1 / vertexdata[1].clippos.w + vertexdata[2].color1.r * w2 / vertexdata[2].clippos.w) / den);
+					sec_color.g = (int)((vertexdata[0].color1.g * w0 / vertexdata[0].clippos.w + vertexdata[1].color1.g * w1 / vertexdata[1].clippos.w + vertexdata[2].color1.g * w2 / vertexdata[2].clippos.w) / den);
+					sec_color.b = (int)((vertexdata[0].color1.b * w0 / vertexdata[0].clippos.w + vertexdata[1].color1.b * w1 / vertexdata[1].clippos.w + vertexdata[2].color1.b * w2 / vertexdata[2].clippos.w) / den);
 				} else {
-					prim_color = vertexdata[2].color0.r | (vertexdata[2].color0.g<<8) | (vertexdata[2].color0.b<<16) | (vertexdata[2].color0.a<<24);
-					sec_color = vertexdata[2].color1.r | (vertexdata[2].color1.g<<8) | (vertexdata[2].color1.b<<16);
+					prim_color.r = vertexdata[2].color0.r;
+					prim_color.g = vertexdata[2].color0.g;
+					prim_color.b = vertexdata[2].color0.b;
+					prim_color.a = vertexdata[2].color0.a;
+					sec_color.r = vertexdata[2].color1.r;
+					sec_color.g = vertexdata[2].color1.g;
+					sec_color.b = vertexdata[2].color1.b;
 				}
 
 				// TODO: Also disable if vertex has no texture coordinates?
+
 				if (gstate.isTextureMapEnabled() && !gstate.isModeClear()) {
-					u32 texcolor = /*TextureDecoder::*/SampleNearest(0, s, t);
+					Color4 texcolor(/*TextureDecoder::*/SampleNearest(0, s, t));
+					u32 mycolor = (/*TextureDecoder::*/SampleNearest(0, s, t));
 
 					bool rgba = (gstate.texfunc & 0x10) != 0;
 
-#define CLAMP_U8(val) (((val) > 255) ? 255 : val)
-#define GET_R(col) ((col)&0xFF)
-#define GET_G(col) (((col)>>8)&0xFF)
-#define GET_B(col) (((col)>>16)&0xFF)
-#define GET_A(col) (((col)>>24)&0xFF)
-#define SET_R(col, val) (col) = ((col)&0xFFFFFF00)|(val);
-#define SET_G(col, val) (col) = ((col)&0xFFFF00FF)|((val)<<8);
-#define SET_B(col, val) (col) = ((col)&0xFF00FFFF)|((val)<<16);
-#define SET_A(col, val) (col) = ((col)&0x00FFFFFF)|((val)<<24);
 					// texture function
 					switch (gstate.getTextureFunction()) {
 					case GE_TEXFUNC_MODULATE:
-						SET_R(prim_color, GET_R(prim_color) * GET_R(texcolor) / 255);
-						SET_G(prim_color, GET_G(prim_color) * GET_G(texcolor) / 255);
-						SET_B(prim_color, GET_B(prim_color) * GET_B(texcolor) / 255);
-						SET_A(prim_color, (rgba) ? (GET_A(prim_color) * GET_A(texcolor) / 255) : GET_A(prim_color));
+						prim_color.rgb() = prim_color.rgb() * texcolor.rgb() / 255;
+						prim_color.a = (rgba) ? (prim_color.a * texcolor.a / 255) : prim_color.a;
 						break;
 
 					case GE_TEXFUNC_DECAL:
 					{
-						int t = (rgba) ? GET_A(texcolor) : 1;
+						int t = (rgba) ? texcolor.a : 1;
 						int invt = (rgba) ? 255 - t : 0;
-						SET_R(prim_color, (invt * GET_R(prim_color) + t * GET_R(texcolor)) / 255);
-						SET_G(prim_color, (invt * GET_G(prim_color) + t * GET_G(texcolor)) / 255);
-						SET_B(prim_color, (invt * GET_B(prim_color) + t * GET_B(texcolor)) / 255);
-						SET_A(prim_color, GET_A(prim_color));
+						prim_color.rgb() = (invt * prim_color.rgb() + t * texcolor.rgb()) / 255;
+						// prim_color.a = prim_color.a;
 						break;
 					}
 
 					case GE_TEXFUNC_BLEND:
 					{
-						SET_R(prim_color, ((255 - GET_R(texcolor)) * GET_R(prim_color) + GET_R(texcolor) * gstate.getTextureEnvColR()) / 255);
-						SET_G(prim_color, ((255 - GET_G(texcolor)) * GET_G(prim_color) + GET_G(texcolor) * gstate.getTextureEnvColG()) / 255);
-						SET_B(prim_color, ((255 - GET_B(texcolor)) * GET_B(prim_color) + GET_B(texcolor) * gstate.getTextureEnvColB()) / 255);
-						SET_A(prim_color, GET_A(prim_color) * ((rgba) ? (GET_A(texcolor)) : 255) / 255);
+						const Color3 const255(255, 255, 255);
+						const Color3 texenv(gstate.getTextureEnvColR(), gstate.getTextureEnvColG(), gstate.getTextureEnvColB());
+						prim_color.rgb() = ((const255 - texcolor.rgb()) * prim_color.rgb() + texcolor.rgb() * texenv) / 255;
+						prim_color.a = prim_color.a * ((rgba) ? texcolor.a : 255) / 255;
 						break;
 					}
 
 					case GE_TEXFUNC_REPLACE:
-						SET_R(prim_color, GET_R(texcolor));
-						SET_G(prim_color, GET_G(texcolor));
-						SET_B(prim_color, GET_B(texcolor));
-						SET_A(prim_color, (rgba) ? GET_A(texcolor) : GET_A(prim_color));
+						prim_color.rgb() = texcolor.rgb();
+						prim_color.a = (rgba) ? texcolor.a : prim_color.a;
 						break;
 
 					case GE_TEXFUNC_ADD:
-						SET_R(prim_color, CLAMP_U8(GET_R(texcolor) + GET_R(prim_color)));
-						SET_G(prim_color, CLAMP_U8(GET_G(texcolor) + GET_G(prim_color)));
-						SET_B(prim_color, CLAMP_U8(GET_B(texcolor) + GET_B(prim_color)));
-						SET_A(prim_color, GET_A(prim_color) * ((rgba) ? GET_A(texcolor) : 255) / 255);
+						prim_color.rgb() += texcolor.rgb();
+						if (prim_color.r > 255) prim_color.r = 255;
+						if (prim_color.g > 255) prim_color.g = 255;
+						if (prim_color.b > 255) prim_color.b = 255;
+						prim_color.a = prim_color.a * ((rgba) ? texcolor.a : 255) / 255;
 						break;
 
 					default:
@@ -267,25 +392,23 @@ void DrawTriangle(VertexData vertexdata[3])
 
 				if (gstate.isColorDoublingEnabled()) {
 					// TODO: Do we need to clamp here?
-					// TODO: Even if we don't need to clamp, we aren't doing any U8 overflow emulation here
-					// TODO: Even if the intermediate registers are wieder than 8 bits, we /are/ overflowing here
-					SET_R(prim_color, GET_R(prim_color)*2);
-					SET_G(prim_color, GET_G(prim_color)*2);
-					SET_B(prim_color, GET_B(prim_color)*2);
-					SET_R(sec_color, GET_R(sec_color)*2);
-					SET_G(sec_color, GET_G(sec_color)*2);
-					SET_B(sec_color, GET_B(sec_color)*2);
+					prim_color.rgb() *= 2;
+					sec_color.rgb() *= 2;
 				}
 
-				SET_R(prim_color, CLAMP_U8(GET_R(prim_color) + GET_R(sec_color)));
-				SET_G(prim_color, CLAMP_U8(GET_G(prim_color) + GET_G(sec_color)));
-				SET_B(prim_color, CLAMP_U8(GET_B(prim_color) + GET_B(sec_color)));
+				prim_color.rgb() += sec_color.rgb();
+				if (prim_color.r > 255) prim_color.r = 255;
+				if (prim_color.g > 255) prim_color.g = 255;
+				if (prim_color.b > 255) prim_color.b = 255;
+				if (prim_color.r < 0) prim_color.r = 0;
+				if (prim_color.g < 0) prim_color.g = 0;
+				if (prim_color.b < 0) prim_color.b = 0;
 
 				// TODO: Fogging
 
 				// TODO: Finish alpha blending support
 //				if (!gstate.isAlphaBlendEnabled())
-					SetPixelColor(p.x, p.y, prim_color);
+					SetPixelColor(p.x, p.y, prim_color.Compactify());
 /*				else {
 					u32 dst = GetPixelColor(p.x, p.y);
 					u32 A, B;
@@ -301,18 +424,8 @@ void DrawTriangle(VertexData vertexdata[3])
 					SET_G(prim_color, (GET_G(prim_color)*GET_G(A)+GET_G(dst)*GET_G(B))/255);
 					SET_B(prim_color, (GET_B(prim_color)*GET_B(A)+GET_B(dst)*GET_B(B))/255);
 					SET_A(prim_color, (GET_A(prim_color)*GET_A(A)+GET_A(dst)*GET_A(B))/255);
-					SetPixelColor(p.x, p.y, prim_color);
+					SetPixelColor(p.x, p.y, prim_color.Compactify());
 				}*/
-
-#undef CLAMP_U8
-#undef GET_R
-#undef GET_G
-#undef GET_B
-#undef GET_A
-#undef SET_R
-#undef SET_G
-#undef SET_B
-#undef SET_A
 			}
 		}
 	}
