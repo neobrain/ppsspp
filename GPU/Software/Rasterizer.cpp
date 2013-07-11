@@ -144,61 +144,6 @@ static inline bool DepthTestPassed(int x, int y, u16 z)
 	}
 }
 
-struct Color4Ref
-{
-	Color4Ref(int& r, int& g, int& b, int& a) : r(r), g(g), b(b), a(a) {};
-
-	Vec3Ref<int> rgb() { return Vec3Ref<int>(r, g, b); }
-
-	void operator += (const Color4Ref& col) {
-		r += col.r;
-		g += col.g;
-		b += col.b;
-		a += col.a;
-	}
-
-	void operator *= (const Color4Ref& col) {
-		r *= col.r;
-		g *= col.g;
-		b *= col.b;
-		a *= col.a;
-	}
-
-	void operator = (const Color4Ref& col) {
-		r = col.r;
-		g = col.g;
-		b = col.b;
-		a = col.a;
-	}
-
-	u32 Compactify() const { return (r&0xFF) | ((g&0xFF)<<8) | ((b&0xFF)<<16) | ((a&0xFF)<<24); }
-
-	int& r;
-	int& g;
-	int& b;
-	int& a;
-};
-
-struct Color4 : Color4Ref
-{
-	Color4(u32 rgba) : Color4Ref(r, g, b, a), r(rgba&0xFF), g((rgba>>8)&0xFF), b((rgba>>16)&0xFF), a((rgba>>24)&0xFF) {}
-	Color4(int r, int g, int b, int a) : Color4Ref(this->r, this->g, this->b, this->a), r(r), g(g), b(b), a(a) {}
-
-	Color4 operator + (const Color4Ref& col) const {
-		return Color4(r + col.r, g + col.g, b + col.b, a + col.a);
-	}
-
-	Color4 operator / (const int val) const {
-		return Color4(r / val, g / val, b / val, a / val);
-	}
-
-	Color4 operator * (const Color4Ref& col) const {
-		return Color4(r * col.r, g * col.g, b * col.b, a * col.a);
-	}
-
-	int r, g, b, a;
-};
-
 void DrawTriangle(const VertexData& v0, const VertexData& v1, const VertexData& v2)
 {
 	int minX = std::min(std::min(v0.drawpos.x, v1.drawpos.x), v2.drawpos.x);
@@ -240,8 +185,8 @@ void DrawTriangle(const VertexData& v0, const VertexData& v1, const VertexData& 
 
 				float s = (v0.texturecoords.s * w0 / v0.clippos.w + v1.texturecoords.s * w1 / v1.clippos.w + v2.texturecoords.s * w2 / v2.clippos.w) / den;
 				float t = (v0.texturecoords.t * w0 / v0.clippos.w + v1.texturecoords.t * w1 / v1.clippos.w + v2.texturecoords.t * w2 / v2.clippos.w) / den;
-				Color4 prim_color(0, 0, 0, 0);
-				Color4 sec_color(0, 0, 0, 0);
+				Vec4<int> prim_color(0, 0, 0, 0);
+				Vec4<int> sec_color(0, 0, 0, 0);
 				if ((gstate.shademodel&1) == GE_SHADE_GOURAUD) {
 					prim_color.r = (int)((v0.color0.r * w0 / v0.clippos.w + v1.color0.r * w1 / v1.clippos.w + v2.color0.r * w2 / v2.clippos.w) / den);
 					prim_color.g = (int)((v0.color0.g * w0 / v0.clippos.w + v1.color0.g * w1 / v1.clippos.w + v2.color0.g * w2 / v2.clippos.w) / den);
@@ -263,7 +208,7 @@ void DrawTriangle(const VertexData& v0, const VertexData& v1, const VertexData& 
 				// TODO: Also disable if vertex has no texture coordinates?
 
 				if (gstate.isTextureMapEnabled() && !gstate.isModeClear()) {
-					Color4 texcolor(/*TextureDecoder::*/SampleNearest(0, s, t));
+					Vec4<int> texcolor = Vec4<int>::FromRGBA(/*TextureDecoder::*/SampleNearest(0, s, t));
 					u32 mycolor = (/*TextureDecoder::*/SampleNearest(0, s, t));
 
 					bool rgba = (gstate.texfunc & 0x10) != 0;
@@ -328,7 +273,7 @@ void DrawTriangle(const VertexData& v0, const VertexData& v1, const VertexData& 
 				// TODO: Fogging
 
 				if (gstate.isAlphaBlendEnabled()) {
-					Color4 dst(GetPixelColor(p.x, p.y));
+					Vec4<int> dst = Vec4<int>::FromRGBA(GetPixelColor(p.x, p.y));
 
 					Vec3<int> srccol(0, 0, 0);
 					Vec3<int> dstcol(0, 0, 0);
@@ -365,7 +310,7 @@ void DrawTriangle(const VertexData& v0, const VertexData& v1, const VertexData& 
 						srccol = 2 * Vec3<int>(255 - dst.a, 255 - dst.a, 255 - dst.a);
 						break;
 					case GE_SRCBLEND_FIXA:
-						srccol = Color4(gstate.getFixA()).rgb();
+						srccol = Vec4<int>::FromRGBA(gstate.getFixA()).rgb();
 						break;
 					}
 
@@ -401,7 +346,7 @@ void DrawTriangle(const VertexData& v0, const VertexData& v1, const VertexData& 
 						dstcol = 2 * Vec3<int>(255 - dst.a, 255 - dst.a, 255 - dst.a);
 						break;
 					GE_DSTBLEND_FIXB:
-						dstcol = Color4(gstate.getFixB()).rgb();
+						dstcol = Vec4<int>::FromRGBA(gstate.getFixB()).rgb();
 						break;
 					}
 
@@ -432,7 +377,7 @@ void DrawTriangle(const VertexData& v0, const VertexData& v1, const VertexData& 
 						break;
 					}
 				}
-				SetPixelColor(p.x, p.y, prim_color.Compactify());
+				SetPixelColor(p.x, p.y, prim_color.ToRGBA());
 			}
 		}
 	}
