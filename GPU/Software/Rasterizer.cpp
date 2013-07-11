@@ -186,23 +186,13 @@ void DrawTriangle(const VertexData& v0, const VertexData& v1, const VertexData& 
 				float s = (v0.texturecoords.s * w0 / v0.clippos.w + v1.texturecoords.s * w1 / v1.clippos.w + v2.texturecoords.s * w2 / v2.clippos.w) / den;
 				float t = (v0.texturecoords.t * w0 / v0.clippos.w + v1.texturecoords.t * w1 / v1.clippos.w + v2.texturecoords.t * w2 / v2.clippos.w) / den;
 				Vec4<int> prim_color(0, 0, 0, 0);
-				Vec4<int> sec_color(0, 0, 0, 0);
+				Vec3<int> sec_color(0, 0, 0);
 				if ((gstate.shademodel&1) == GE_SHADE_GOURAUD) {
-					prim_color.r = (int)((v0.color0.r * w0 / v0.clippos.w + v1.color0.r * w1 / v1.clippos.w + v2.color0.r * w2 / v2.clippos.w) / den);
-					prim_color.g = (int)((v0.color0.g * w0 / v0.clippos.w + v1.color0.g * w1 / v1.clippos.w + v2.color0.g * w2 / v2.clippos.w) / den);
-					prim_color.b = (int)((v0.color0.b * w0 / v0.clippos.w + v1.color0.b * w1 / v1.clippos.w + v2.color0.b * w2 / v2.clippos.w) / den);
-					prim_color.a = (int)((v0.color0.a * w0 / v0.clippos.w + v1.color0.a * w1 / v1.clippos.w + v2.color0.a * w2 / v2.clippos.w) / den);
-					sec_color.r = (int)((v0.color1.r * w0 / v0.clippos.w + v1.color1.r * w1 / v1.clippos.w + v2.color1.r * w2 / v2.clippos.w) / den);
-					sec_color.g = (int)((v0.color1.g * w0 / v0.clippos.w + v1.color1.g * w1 / v1.clippos.w + v2.color1.g * w2 / v2.clippos.w) / den);
-					sec_color.b = (int)((v0.color1.b * w0 / v0.clippos.w + v1.color1.b * w1 / v1.clippos.w + v2.color1.b * w2 / v2.clippos.w) / den);
+					prim_color = ((v0.color0 * w0 / v0.clippos.w + v1.color0 * w1 / v1.clippos.w + v2.color0 * w2 / v2.clippos.w) / den).Cast<int,int,int,int>();
+					sec_color = ((v0.color1 * w0 / v0.clippos.w + v1.color1 * w1 / v1.clippos.w + v2.color1 * w2 / v2.clippos.w) / den).Cast<int,int,int>();
 				} else {
-					prim_color.r = v2.color0.r;
-					prim_color.g = v2.color0.g;
-					prim_color.b = v2.color0.b;
-					prim_color.a = v2.color0.a;
-					sec_color.r = v2.color1.r;
-					sec_color.g = v2.color1.g;
-					sec_color.b = v2.color1.b;
+					prim_color = v2.color0;
+					sec_color = v2.color1;
 				}
 
 				// TODO: Also disable if vertex has no texture coordinates?
@@ -259,10 +249,10 @@ void DrawTriangle(const VertexData& v0, const VertexData& v1, const VertexData& 
 				if (gstate.isColorDoublingEnabled()) {
 					// TODO: Do we need to clamp here?
 					prim_color.rgb() *= 2;
-					sec_color.rgb() *= 2;
+					sec_color *= 2;
 				}
 
-				prim_color.rgb() += sec_color.rgb();
+				prim_color.rgb() += sec_color;
 				if (prim_color.r > 255) prim_color.r = 255;
 				if (prim_color.g > 255) prim_color.g = 255;
 				if (prim_color.b > 255) prim_color.b = 255;
