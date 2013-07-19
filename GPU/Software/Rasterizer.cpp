@@ -247,7 +247,7 @@ void DrawTriangle(const VertexData& v0, const VertexData& v1, const VertexData& 
 
 					case GE_TEXFUNC_DECAL:
 					{
-						int t = (rgba) ? texcolor.a : 1;
+						int t = (rgba) ? texcolor.a : 255;
 						int invt = (rgba) ? 255 - t : 0;
 						prim_color.rgb() = (invt * prim_color.rgb() + t * texcolor.rgb()) / 255;
 						// prim_color.a = prim_color.a;
