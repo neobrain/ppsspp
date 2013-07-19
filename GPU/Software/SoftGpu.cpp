@@ -190,7 +190,7 @@ void CopyToCurrentFboFromRam(u8* data, int srcwidth, int srcheight, int dstwidth
 void SoftGPU::CopyDisplayToOutput()
 {
 	// TODO: How to get the correct dimensions?
-	CopyToCurrentFboFromRam(fb, gstate.fbwidth & 0x3C0, FB_HEIGHT, 480, 272);
+	CopyToCurrentFboFromRam(fb, gstate.fbwidth & 0x3C0, FB_HEIGHT, 960, 544);
 }
 
 u32 SoftGPU::DrawSync(int mode)
