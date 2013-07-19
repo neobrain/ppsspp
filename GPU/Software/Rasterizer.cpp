@@ -338,37 +338,37 @@ void DrawTriangle(const VertexData& v0, const VertexData& v1, const VertexData& 
 					}
 
 					switch (gstate.getBlendFuncB()) {
-					GE_DSTBLEND_SRCCOLOR:
+					case GE_DSTBLEND_SRCCOLOR:
 						dstcol = prim_color.rgb();
 						break;
-					GE_DSTBLEND_INVSRCCOLOR:
+					case GE_DSTBLEND_INVSRCCOLOR:
 						dstcol = Vec3<int>(255, 255, 255) - prim_color.rgb();
 						break;
-					GE_DSTBLEND_SRCALPHA:
+					case GE_DSTBLEND_SRCALPHA:
 						dstcol = Vec3<int>(prim_color.a, prim_color.a, prim_color.a);
 						break;
-					GE_DSTBLEND_INVSRCALPHA:
+					case GE_DSTBLEND_INVSRCALPHA:
 						dstcol = Vec3<int>(255 - prim_color.a, 255 - prim_color.a, 255 - prim_color.a);
 						break;
-					GE_DSTBLEND_DSTALPHA:
+					case GE_DSTBLEND_DSTALPHA:
 						dstcol = Vec3<int>(dst.a, dst.a, dst.a);
 						break;
-					GE_DSTBLEND_INVDSTALPHA:
+					case GE_DSTBLEND_INVDSTALPHA:
 						dstcol = Vec3<int>(255 - dst.a, 255 - dst.a, 255 - dst.a);
 						break;
-					GE_DSTBLEND_DOUBLESRCALPHA:
+					case GE_DSTBLEND_DOUBLESRCALPHA:
 						dstcol = 2 * Vec3<int>(prim_color.a, prim_color.a, prim_color.a);
 						break;
-					GE_DSTBLEND_DOUBLEINVSRCALPHA:
+					case GE_DSTBLEND_DOUBLEINVSRCALPHA:
 						dstcol = 2 * Vec3<int>(255 - prim_color.a, 255 - prim_color.a, 255 - prim_color.a);
 						break;
-					GE_DSTBLEND_DOUBLEDSTALPHA:
+					case GE_DSTBLEND_DOUBLEDSTALPHA:
 						dstcol = 2 * Vec3<int>(dst.a, dst.a, dst.a);
 						break;
-					GE_DSTBLEND_DOUBLEINVDSTALPHA:
+					case GE_DSTBLEND_DOUBLEINVDSTALPHA:
 						dstcol = 2 * Vec3<int>(255 - dst.a, 255 - dst.a, 255 - dst.a);
 						break;
-					GE_DSTBLEND_FIXB:
+					case GE_DSTBLEND_FIXB:
 						dstcol = Vec4<int>::FromRGBA(gstate.getFixB()).rgb();
 						break;
 					}
