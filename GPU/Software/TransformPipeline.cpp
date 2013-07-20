@@ -172,6 +172,7 @@ void TransformUnit::SubmitPrimitive(void* vertices, void* indices, u32 prim_type
 
 	VertexReader vreader(buf, vtxfmt, vertex_type);
 
+	const int max_vtcs_per_prim = 4;
 	int vtcs_per_prim = 0;
 	if (prim_type == GE_PRIM_POINTS) vtcs_per_prim = 1;
 	else if (prim_type == GE_PRIM_LINES) vtcs_per_prim = 2;
@@ -183,7 +184,7 @@ void TransformUnit::SubmitPrimitive(void* vertices, void* indices, u32 prim_type
 
 	if (prim_type == GE_PRIM_POINTS || prim_type == GE_PRIM_LINES || prim_type == GE_PRIM_TRIANGLES || prim_type == GE_PRIM_RECTANGLES) {
 		for (int vtx = 0; vtx < vertex_count; vtx += vtcs_per_prim) {
-			VertexData data[vtcs_per_prim];
+			VertexData data[max_vtcs_per_prim];
 
 			for (unsigned int i = 0; i < vtcs_per_prim; ++i) {
 				if (indices)
