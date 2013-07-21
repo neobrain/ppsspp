@@ -141,21 +141,21 @@ struct GPUgstate
 				texmode,              // 0xC2
 				texformat,            // 0xC3
 				loadclut,             // 0xC4
-				clutformat,
-				texfilter,
-				texwrap,
-				texlevel,
-				texfunc,
-				texenvcolor,
-				texflush,
-				texsync,
-				fog1,
-				fog2,
-				fogcolor,
-				texlodslope,
-				padxxxxxx,
-				framebufpixformat,
-				clearmode,
+				clutformat,           // 0xC5
+				texfilter,            // 0xC6
+				texwrap,              // 0xC7
+				texlevel,             // 0xC8
+				texfunc,              // 0xC9
+				texenvcolor,          // 0xCA
+				texflush,             // 0xCB
+				texsync,              // 0xCC
+				fog1,                 // 0xCD
+				fog2,                 // 0xCE
+				fogcolor,             // 0xCF
+				texlodslope,          // 0xD0
+				padxxxxxx,            // 0xD1
+				framebufpixformat,    // 0xD2
+				clearmode,            // 0xD3
 				scissor1,
 				scissor2,
 				minz,
@@ -194,6 +194,7 @@ struct GPUgstate
 	float tgenMatrix[12];
 	float boneMatrix[12 * 8];  // Eight bone matrices.
 
+	GEBufferFormat FrameBufFormat() const { return static_cast<GEBufferFormat>(framebufpixformat & 3); }
 	int FrameBufStride() const { return fbwidth&0x7C0; }
 	int DepthBufStride() const { return fbwidth&0x7C0; }
 
