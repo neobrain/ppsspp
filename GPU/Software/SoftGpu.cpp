@@ -24,6 +24,7 @@
 
 #include "SoftGpu.h"
 #include "TransformPipeline.h"
+#include "Colors.h"
 
 static GLuint temp_texture = 0;
 
@@ -155,7 +156,26 @@ void CopyToCurrentFboFromRam(u8* data, int srcwidth, int srcheight, int dstwidth
 
 	glBindTexture(GL_TEXTURE_2D, temp_texture);
 
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, (GLsizei)srcwidth, (GLsizei)srcheight, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+	if (gstate.FrameBufFormat() == GE_FORMAT_8888) {
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, (GLsizei)srcwidth, (GLsizei)srcheight, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+	} else {
+		// TODO: This should probably be converted in a shader instead..
+		u32 buf[srcwidth*srcheight];
+		for (int y = 0; y < srcheight; ++y) {
+			for (int x = 0; x < srcwidth; ++x) {
+				u16 src = *(u16*)&fb[4*x + 4*y*gstate.FrameBufStride()];
+
+				if (gstate.FrameBufFormat() == GE_FORMAT_565)
+					buf[x+y*srcwidth] = DecodeRGB565(src);
+				else if (gstate.FrameBufFormat() == GE_FORMAT_5551)
+					buf[x+y*srcwidth] = DecodeRGBA5551(src);
+				else if (gstate.FrameBufFormat() == GE_FORMAT_4444)
+					buf[x+y*srcwidth] = DecodeRGBA4444(src);
+			}
+		}
+
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, (GLsizei)srcwidth, (GLsizei)srcheight, 0, GL_RGBA, GL_UNSIGNED_BYTE, buf);
+	}
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 
@@ -254,7 +274,6 @@ void SoftGPU::ExecuteOp(u32 op, u32 diff)
 
 			if (type != GE_PRIM_TRIANGLES && type != GE_PRIM_TRIANGLE_STRIP && type != GE_PRIM_RECTANGLES)
 				break;
-
 //			ERROR_LOG(G3D, "DL DrawPrim type: %s count: %i vaddr= %08x, iaddr= %08x", type<7 ? types[type] : "INVALID", count, gstate_c.vertexAddr, gstate_c.indexAddr);
 
 			void *verts = Memory::GetPointer(gstate_c.vertexAddr);
@@ -541,7 +560,7 @@ void SoftGPU::ExecuteOp(u32 op, u32 diff)
 	case GE_CMD_ZBUFPTR:
 		{
 			u32 ptr = op & 0xFFE000;
-			depthbuf = Memory::GetPointer(0x44000000 | (gstate.fbptr & 0xFFE000) | ((gstate.fbwidth & 0xFF0000) << 8));
+			depthbuf = Memory::GetPointer(0x44000000 | (gstate.zbptr & 0xFFE000) | ((gstate.zbwidth & 0xFF0000) << 8));
 			DEBUG_LOG(G3D,"Zbuf Ptr: %06x", ptr);
 		}
 		break;
@@ -549,7 +568,7 @@ void SoftGPU::ExecuteOp(u32 op, u32 diff)
 	case GE_CMD_ZBUFWIDTH:
 		{
 			u32 w = data & 0xFFFFFF;
-			depthbuf = Memory::GetPointer(0x44000000 | (gstate.fbptr & 0xFFE000) | ((gstate.fbwidth & 0xFF0000) << 8));
+			depthbuf = Memory::GetPointer(0x44000000 | (gstate.zbptr & 0xFFE000) | ((gstate.zbwidth & 0xFF0000) << 8));
 			DEBUG_LOG(G3D,"Zbuf Width: %i", w);
 		}
 		break;
