@@ -133,6 +133,26 @@ u32 SampleNearest(int level, float s, float t)
 	} else if (texfmt == GE_TFMT_8888) {
 		srcptr += GetPixelDataOffset(32, texbufwidth*8, u, v);
 		return DecodeRGBA8888(*(u32*)srcptr);
+	} else if (texfmt == GE_TFMT_CLUT32) {
+		srcptr += GetPixelDataOffset(32, texbufwidth*8, u, v);
+
+		u32 val = *(u32*)srcptr; // TODO: Is this endian correct?
+		u16 index = (val >> gstate.getClutIndexShift()) & 0xFF;
+		index &= gstate.getClutIndexMask();
+		index = (index & 0xFF) | gstate.getClutIndexStartPos(); // Topmost bit is copied from start pos
+
+		// TODO: Assert that we're using GE_CMODE_32BIT_ABGR8888;
+		return DecodeRGBA8888(bswap32(*(u32*)&clut[index])); // TODO: No idea if that bswap is correct
+	} else if (texfmt == GE_TFMT_CLUT16) {
+		srcptr += GetPixelDataOffset(16, texbufwidth*8, u, v);
+
+		u16 val = *(u16*)srcptr; // TODO: Is this endian correct?
+		u16 index = (((u32)val) >> gstate.getClutIndexShift()) & 0xFF;
+		index &= gstate.getClutIndexMask();
+		index = (index & 0xFF) | gstate.getClutIndexStartPos(); // Topmost bit is copied from start pos
+
+		// TODO: Assert that we're using GE_CMODE_32BIT_ABGR8888;
+		return DecodeRGBA8888(bswap32(*(u32*)&clut[index])); // TODO: No idea if that bswap is correct
 	} else if (texfmt == GE_TFMT_CLUT8) {
 		srcptr += GetPixelDataOffset(8, texbufwidth*8, u, v);
 
@@ -227,7 +247,7 @@ static inline bool DepthTestPassed(int x, int y, u16 z)
 	}
 }
 
-bool IsRightSideOrFlatBottomLine(const Vec2<u10,u10>& vertex, const Vec2<u10,u10>& line1, const Vec2<u10,u10>& line2)
+static inline bool IsRightSideOrFlatBottomLine(const Vec2<u10,u10>& vertex, const Vec2<u10,u10>& line1, const Vec2<u10,u10>& line2)
 {
 	if (line1.y == line2.y) {
 		// just check if vertex is above us => bottom line parallel to x-axis
@@ -238,7 +258,7 @@ bool IsRightSideOrFlatBottomLine(const Vec2<u10,u10>& vertex, const Vec2<u10,u10
 	}
 }
 
-void ApplyStencilOp(int op, int x, int y)
+static inline void ApplyStencilOp(int op, int x, int y)
 {
 	u8 old_stencil = GetPixelStencil(x, y); // TODO: Apply mask?
 	u8 reference_stencil = gstate.getStencilTestRef(); // TODO: Apply mask?
@@ -271,6 +291,57 @@ void ApplyStencilOp(int op, int x, int y)
 	}
 }
 
+static inline Vec4<int> GetTextureFunctionOutput(const Vec4<int>& prim_color, float s, float t)
+{
+	Vec4<int> texcolor = Vec4<int>::FromRGBA(/*TextureDecoder::*/SampleNearest(0, s, t));
+	Vec4<int> out;
+
+	bool rgba = (gstate.texfunc & 0x100) != 0;
+
+	// texture function
+	switch (gstate.getTextureFunction()) {
+	case GE_TEXFUNC_MODULATE:
+		out.rgb() = prim_color.rgb() * texcolor.rgb() / 255;
+		out.a = (rgba) ? (prim_color.a * texcolor.a / 255) : prim_color.a;
+		break;
+
+	case GE_TEXFUNC_DECAL:
+	{
+		int t = (rgba) ? texcolor.a : 255;
+		int invt = (rgba) ? 255 - t : 0;
+		out.rgb() = (invt * prim_color.rgb() + t * texcolor.rgb()) / 255;
+		out.a = prim_color.a;
+		break;
+	}
+
+	case GE_TEXFUNC_BLEND:
+	{
+		const Vec3<int> const255(255, 255, 255);
+		const Vec3<int> texenv(gstate.getTextureEnvColR(), gstate.getTextureEnvColG(), gstate.getTextureEnvColB());
+		out.rgb() = ((const255 - texcolor.rgb()) * prim_color.rgb() + texcolor.rgb() * texenv) / 255;
+		out.a = prim_color.a * ((rgba) ? texcolor.a : 255) / 255;
+		break;
+	}
+
+	case GE_TEXFUNC_REPLACE:
+		out.rgb() = texcolor.rgb();
+		out.a = (rgba) ? texcolor.a : prim_color.a;
+		break;
+
+	case GE_TEXFUNC_ADD:
+		out.rgb() = prim_color.rgb() + texcolor.rgb();
+		if (out.r > 255) out.r = 255;
+		if (out.g > 255) out.g = 255;
+		if (out.b > 255) out.b = 255;
+		out.a = prim_color.a * ((rgba) ? texcolor.a : 255) / 255;
+		break;
+
+	default:
+		ERROR_LOG(G3D, "Unknown texture function %x", gstate.getTextureFunction());
+		break;
+	}
+	return out;
+}
 // Draws triangle, vertices specified in counter-clockwise direction (TODO: Make sure this is actually enforced)
 void DrawTriangle(const VertexData& v0, const VertexData& v1, const VertexData& v2)
 {
@@ -327,53 +398,8 @@ void DrawTriangle(const VertexData& v0, const VertexData& v1, const VertexData& 
 				}
 
 				// TODO: Also disable if vertex has no texture coordinates?
-				if (gstate.isTextureMapEnabled() && !gstate.isModeClear()) {
-					Vec4<int> texcolor = Vec4<int>::FromRGBA(/*TextureDecoder::*/SampleNearest(0, s, t));
-
-					bool rgba = (gstate.texfunc & 0x100) != 0;
-
-					// texture function
-					switch (gstate.getTextureFunction()) {
-					case GE_TEXFUNC_MODULATE:
-						prim_color.rgb() = prim_color.rgb() * texcolor.rgb() / 255;
-						prim_color.a = (rgba) ? (prim_color.a * texcolor.a / 255) : prim_color.a;
-						break;
-
-					case GE_TEXFUNC_DECAL:
-					{
-						int t = (rgba) ? texcolor.a : 255;
-						int invt = (rgba) ? 255 - t : 0;
-						prim_color.rgb() = (invt * prim_color.rgb() + t * texcolor.rgb()) / 255;
-						// prim_color.a = prim_color.a;
-						break;
-					}
-
-					case GE_TEXFUNC_BLEND:
-					{
-						const Vec3<int> const255(255, 255, 255);
-						const Vec3<int> texenv(gstate.getTextureEnvColR(), gstate.getTextureEnvColG(), gstate.getTextureEnvColB());
-						prim_color.rgb() = ((const255 - texcolor.rgb()) * prim_color.rgb() + texcolor.rgb() * texenv) / 255;
-						prim_color.a = prim_color.a * ((rgba) ? texcolor.a : 255) / 255;
-						break;
-					}
-
-					case GE_TEXFUNC_REPLACE:
-						prim_color.rgb() = texcolor.rgb();
-						prim_color.a = (rgba) ? texcolor.a : prim_color.a;
-						break;
-
-					case GE_TEXFUNC_ADD:
-						prim_color.rgb() += texcolor.rgb();
-						if (prim_color.r > 255) prim_color.r = 255;
-						if (prim_color.g > 255) prim_color.g = 255;
-						if (prim_color.b > 255) prim_color.b = 255;
-						prim_color.a = prim_color.a * ((rgba) ? texcolor.a : 255) / 255;
-						break;
-
-					default:
-						ERROR_LOG(G3D, "Unknown texture function %x", gstate.getTextureFunction());
-					}
-				}
+				if (gstate.isTextureMapEnabled() && !gstate.isModeClear())
+					prim_color = GetTextureFunctionOutput(prim_color, s, t);
 
 				if (gstate.isColorDoublingEnabled()) {
 					// TODO: Do we need to clamp here?
