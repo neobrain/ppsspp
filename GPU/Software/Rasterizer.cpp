@@ -308,26 +308,27 @@ static inline void ApplyStencilOp(int op, int x, int y)
 	}
 }
 
-static inline Vec4<int> GetTextureFunctionOutput(const Vec4<int>& prim_color, float s, float t)
+static inline Vec4<int> GetTextureFunctionOutput(const Vec3<int>& prim_color_rgb, int prim_color_a, float s, float t)
 {
 	Vec4<int> texcolor = Vec4<int>::FromRGBA(/*TextureDecoder::*/SampleNearest(0, s, t));
-	Vec4<int> out;
+	Vec3<int> out_rgb;
+	int out_a;
 
 	bool rgba = (gstate.texfunc & 0x100) != 0;
 
 	// texture function
 	switch (gstate.getTextureFunction()) {
 	case GE_TEXFUNC_MODULATE:
-		out.rgb() = prim_color.rgb() * texcolor.rgb() / 255;
-		out.a = (rgba) ? (prim_color.a * texcolor.a / 255) : prim_color.a;
+		out_rgb = prim_color_rgb * texcolor.rgb() / 255;
+		out_a = (rgba) ? (prim_color_a * texcolor.a / 255) : prim_color_a;
 		break;
 
 	case GE_TEXFUNC_DECAL:
 	{
 		int t = (rgba) ? texcolor.a : 255;
 		int invt = (rgba) ? 255 - t : 0;
-		out.rgb() = (invt * prim_color.rgb() + t * texcolor.rgb()) / 255;
-		out.a = prim_color.a;
+		out_rgb = (invt * prim_color_rgb + t * texcolor.rgb()) / 255;
+		out_a = prim_color_a;
 		break;
 	}
 
@@ -335,29 +336,29 @@ static inline Vec4<int> GetTextureFunctionOutput(const Vec4<int>& prim_color, fl
 	{
 		const Vec3<int> const255(255, 255, 255);
 		const Vec3<int> texenv(gstate.getTextureEnvColR(), gstate.getTextureEnvColG(), gstate.getTextureEnvColB());
-		out.rgb() = ((const255 - texcolor.rgb()) * prim_color.rgb() + texcolor.rgb() * texenv) / 255;
-		out.a = prim_color.a * ((rgba) ? texcolor.a : 255) / 255;
+		out_rgb = ((const255 - texcolor.rgb()) * prim_color_rgb + texcolor.rgb() * texenv) / 255;
+		out_a = prim_color_a * ((rgba) ? texcolor.a : 255) / 255;
 		break;
 	}
 
 	case GE_TEXFUNC_REPLACE:
-		out.rgb() = texcolor.rgb();
-		out.a = (rgba) ? texcolor.a : prim_color.a;
+		out_rgb = texcolor.rgb();
+		out_a = (rgba) ? texcolor.a : prim_color_a;
 		break;
 
 	case GE_TEXFUNC_ADD:
-		out.rgb() = prim_color.rgb() + texcolor.rgb();
-		if (out.r > 255) out.r = 255;
-		if (out.g > 255) out.g = 255;
-		if (out.b > 255) out.b = 255;
-		out.a = prim_color.a * ((rgba) ? texcolor.a : 255) / 255;
+		out_rgb = prim_color_rgb + texcolor.rgb();
+		if (out_rgb.r > 255) out_rgb.r = 255;
+		if (out_rgb.g > 255) out_rgb.g = 255;
+		if (out_rgb.b > 255) out_rgb.b = 255;
+		out_a = prim_color_a * ((rgba) ? texcolor.a : 255) / 255;
 		break;
 
 	default:
 		ERROR_LOG(G3D, "Unknown texture function %x", gstate.getTextureFunction());
 		break;
 	}
-	return out;
+	return Vec4<int>(out_rgb.r, out_rgb.g, out_rgb.b, out_a);
 }
 // Draws triangle, vertices specified in counter-clockwise direction (TODO: Make sure this is actually enforced)
 void DrawTriangle(const VertexData& v0, const VertexData& v1, const VertexData& v2)
@@ -397,41 +398,47 @@ void DrawTriangle(const VertexData& v0, const VertexData& v1, const VertexData& 
 				float s = (v0.texturecoords.s * w0 / v0.clippos.w + v1.texturecoords.s * w1 / v1.clippos.w + v2.texturecoords.s * w2 / v2.clippos.w) / den;
 				float t = (v0.texturecoords.t * w0 / v0.clippos.w + v1.texturecoords.t * w1 / v1.clippos.w + v2.texturecoords.t * w2 / v2.clippos.w) / den;
 
-				Vec4<int> prim_color(0, 0, 0, 0);
+				Vec3<int> prim_color_rgb(0, 0, 0);
+				int prim_color_a = 0;
 				Vec3<int> sec_color(0, 0, 0);
 				if ((gstate.shademodel&1) == GE_SHADE_GOURAUD) {
 					// NOTE: When not casting color0 and color1 to float vectors, this code suffers from severe overflow issues.
 					// Not sure if that should be regarded as a bug or if casting to float is a valid fix.
 					// TODO: Is that the correct way to interpolate?
-					prim_color = ((v0.color0.Cast<float,float,float,float>() * w0 +
-									v1.color0.Cast<float,float,float,float>() * w1 +
-									v2.color0.Cast<float,float,float,float>() * w2) / (w0+w1+w2)).Cast<int,int,int,int>();
+					prim_color_rgb = ((v0.color0.rgb().Cast<float,float,float>() * w0 +
+									v1.color0.rgb().Cast<float,float,float>() * w1 +
+									v2.color0.rgb().Cast<float,float,float>() * w2) / (w0+w1+w2)).Cast<int,int,int>();
+					prim_color_a = (int)((v0.color0.a * w0 + v1.color0.a * w1 + v2.color0.a * w2) / (w0+w1+w2));
 					sec_color = ((v0.color1.Cast<float,float,float>() * w0 +
 									v1.color1.Cast<float,float,float>() * w1 +
 									v2.color1.Cast<float,float,float>() * w2) / (w0+w1+w2)).Cast<int,int,int>();
 				} else {
-					prim_color = v2.color0;
+					prim_color_rgb = v2.color0.rgb();
+					prim_color_a = v2.color0.a;
 					sec_color = v2.color1;
 				}
 
 				// TODO: Also disable if vertex has no texture coordinates?
-				if (gstate.isTextureMapEnabled() && !gstate.isModeClear())
-					prim_color = GetTextureFunctionOutput(prim_color, s, t);
+				if (gstate.isTextureMapEnabled() && !gstate.isModeClear()) {
+					Vec4<int> out = GetTextureFunctionOutput(prim_color_rgb, prim_color_a, s, t);
+					prim_color_rgb = out.rgb();
+					prim_color_a = out.a;
+				}
 
 				if (gstate.isColorDoublingEnabled()) {
 					// TODO: Do we need to clamp here?
-					prim_color.rgb() *= 2;
+					prim_color_rgb *= 2;
 					sec_color *= 2;
 				}
 
-				prim_color.rgb() += sec_color;
+				prim_color_rgb += sec_color;
 
 				// TODO: Fogging
 
 				if (gstate.isColorTestEnabled()) {
 					bool pass = false;
 					Vec3<int> ref = Vec3<int>::FromRGB(gstate.colorref&(gstate.colormask&0xFFFFFF));
-					Vec3<int> color = Vec3<int>::FromRGB(prim_color.rgb().ToRGB()&(gstate.colormask&0xFFFFFF));
+					Vec3<int> color = Vec3<int>::FromRGB(prim_color_rgb.ToRGB()&(gstate.colormask&0xFFFFFF));
 					switch (gstate.colortest & 0x3) {
 						case GE_COMP_NEVER:
 							pass = false;
@@ -453,7 +460,7 @@ void DrawTriangle(const VertexData& v0, const VertexData& v1, const VertexData& 
 				if (gstate.isAlphaTestEnabled()) {
 					bool pass = false;
 					u8 ref = (gstate.alphatest>>8) & (gstate.alphatest>>16);
-					u8 alpha = prim_color.a & (gstate.alphatest>>16);
+					u8 alpha = prim_color_a & (gstate.alphatest>>16);
 
 					switch (gstate.alphatest & 0x7) {
 						case GE_COMP_NEVER:
@@ -553,10 +560,10 @@ void DrawTriangle(const VertexData& v0, const VertexData& v1, const VertexData& 
 						srccol = Vec3<int>(255, 255, 255) - dst.rgb();
 						break;
 					case GE_SRCBLEND_SRCALPHA: // ddd
-						srccol = Vec3<int>(prim_color.a, prim_color.a, prim_color.a);
+						srccol = Vec3<int>(prim_color_a, prim_color_a, prim_color_a);
 						break;
 					case GE_SRCBLEND_INVSRCALPHA:
-						srccol = Vec3<int>(255 - prim_color.a, 255 - prim_color.a, 255 - prim_color.a);
+						srccol = Vec3<int>(255 - prim_color_a, 255 - prim_color_a, 255 - prim_color_a);
 						break;
 					case GE_SRCBLEND_DSTALPHA:
 						srccol = Vec3<int>(dst.a, dst.a, dst.a);
@@ -565,10 +572,10 @@ void DrawTriangle(const VertexData& v0, const VertexData& v1, const VertexData& 
 						srccol = Vec3<int>(255 - dst.a, 255 - dst.a, 255 - dst.a);
 						break;
 					case GE_SRCBLEND_DOUBLESRCALPHA:
-						srccol = 2 * Vec3<int>(prim_color.a, prim_color.a, prim_color.a);
+						srccol = 2 * Vec3<int>(prim_color_a, prim_color_a, prim_color_a);
 						break;
 					case GE_SRCBLEND_DOUBLEINVSRCALPHA:
-						srccol = Vec3<int>(255 - 2 * prim_color.a, 255 - 2 * prim_color.a, 255 - 2 * prim_color.a);
+						srccol = Vec3<int>(255 - 2 * prim_color_a, 255 - 2 * prim_color_a, 255 - 2 * prim_color_a);
 						break;
 					case GE_SRCBLEND_DOUBLEDSTALPHA:
 						srccol = 2 * Vec3<int>(dst.a, dst.a, dst.a);
@@ -583,16 +590,16 @@ void DrawTriangle(const VertexData& v0, const VertexData& v1, const VertexData& 
 
 					switch (gstate.getBlendFuncB()) {
 					case GE_DSTBLEND_SRCCOLOR:
-						dstcol = prim_color.rgb();
+						dstcol = prim_color_rgb;
 						break;
 					case GE_DSTBLEND_INVSRCCOLOR:
-						dstcol = Vec3<int>(255, 255, 255) - prim_color.rgb();
+						dstcol = Vec3<int>(255, 255, 255) - prim_color_rgb;
 						break;
 					case GE_DSTBLEND_SRCALPHA:
-						dstcol = Vec3<int>(prim_color.a, prim_color.a, prim_color.a);
+						dstcol = Vec3<int>(prim_color_a, prim_color_a, prim_color_a);
 						break;
 					case GE_DSTBLEND_INVSRCALPHA:
-						dstcol = Vec3<int>(255 - prim_color.a, 255 - prim_color.a, 255 - prim_color.a);
+						dstcol = Vec3<int>(255 - prim_color_a, 255 - prim_color_a, 255 - prim_color_a);
 						break;
 					case GE_DSTBLEND_DSTALPHA:
 						dstcol = Vec3<int>(dst.a, dst.a, dst.a);
@@ -601,10 +608,10 @@ void DrawTriangle(const VertexData& v0, const VertexData& v1, const VertexData& 
 						dstcol = Vec3<int>(255 - dst.a, 255 - dst.a, 255 - dst.a);
 						break;
 					case GE_DSTBLEND_DOUBLESRCALPHA:
-						dstcol = 2 * Vec3<int>(prim_color.a, prim_color.a, prim_color.a);
+						dstcol = 2 * Vec3<int>(prim_color_a, prim_color_a, prim_color_a);
 						break;
 					case GE_DSTBLEND_DOUBLEINVSRCALPHA:
-						dstcol = Vec3<int>(255 - 2 * prim_color.a, 255 - 2 * prim_color.a, 255 - 2 * prim_color.a);
+						dstcol = Vec3<int>(255 - 2 * prim_color_a, 255 - 2 * prim_color_a, 255 - 2 * prim_color_a);
 						break;
 					case GE_DSTBLEND_DOUBLEDSTALPHA:
 						dstcol = 2 * Vec3<int>(dst.a, dst.a, dst.a);
@@ -619,40 +626,40 @@ void DrawTriangle(const VertexData& v0, const VertexData& v1, const VertexData& 
 
 					switch (gstate.getBlendEq()) {
 					case GE_BLENDMODE_MUL_AND_ADD:
-						prim_color.rgb() = (prim_color.rgb() * srccol + dst.rgb() * dstcol) / 255;
+						prim_color_rgb = (prim_color_rgb * srccol + dst.rgb() * dstcol) / 255;
 						break;
 					case GE_BLENDMODE_MUL_AND_SUBTRACT:
-						prim_color.rgb() = (prim_color.rgb() * srccol - dst.rgb() * dstcol) / 255;
+						prim_color_rgb = (prim_color_rgb * srccol - dst.rgb() * dstcol) / 255;
 						break;
 					case GE_BLENDMODE_MUL_AND_SUBTRACT_REVERSE:
-						prim_color.rgb() = (dst.rgb() * dstcol - prim_color.rgb() * srccol) / 255;
+						prim_color_rgb = (dst.rgb() * dstcol - prim_color_rgb * srccol) / 255;
 						break;
 					case GE_BLENDMODE_MIN:
-						prim_color.r = std::min(prim_color.r, dst.r);
-						prim_color.g = std::min(prim_color.g, dst.g);
-						prim_color.b = std::min(prim_color.b, dst.b);
+						prim_color_rgb.r = std::min(prim_color_rgb.r, dst.r);
+						prim_color_rgb.g = std::min(prim_color_rgb.g, dst.g);
+						prim_color_rgb.b = std::min(prim_color_rgb.b, dst.b);
 						break;
 					case GE_BLENDMODE_MAX:
-						prim_color.r = std::max(prim_color.r, dst.r);
-						prim_color.g = std::max(prim_color.g, dst.g);
-						prim_color.b = std::max(prim_color.b, dst.b);
+						prim_color_rgb.r = std::max(prim_color_rgb.r, dst.r);
+						prim_color_rgb.g = std::max(prim_color_rgb.g, dst.g);
+						prim_color_rgb.b = std::max(prim_color_rgb.b, dst.b);
 						break;
 					case GE_BLENDMODE_ABSDIFF:
-						prim_color.r = std::abs(prim_color.r - dst.r);
-						prim_color.g = std::abs(prim_color.g - dst.g);
-						prim_color.b = std::abs(prim_color.b - dst.b);
+						prim_color_rgb.r = std::abs(prim_color_rgb.r - dst.r);
+						prim_color_rgb.g = std::abs(prim_color_rgb.g - dst.g);
+						prim_color_rgb.b = std::abs(prim_color_rgb.b - dst.b);
 						break;
 					}
 				}
-				if (prim_color.r > 255) prim_color.r = 255;
-				if (prim_color.g > 255) prim_color.g = 255;
-				if (prim_color.b > 255) prim_color.b = 255;
-				if (prim_color.a > 255) prim_color.a = 255;
-				if (prim_color.r < 0) prim_color.r = 0;
-				if (prim_color.g < 0) prim_color.g = 0;
-				if (prim_color.b < 0) prim_color.b = 0;
-				if (prim_color.a < 0) prim_color.a = 0;
-				SetPixelColor(p.x, p.y, prim_color.ToRGBA());
+				if (prim_color_rgb.r > 255) prim_color_rgb.r = 255;
+				if (prim_color_rgb.g > 255) prim_color_rgb.g = 255;
+				if (prim_color_rgb.b > 255) prim_color_rgb.b = 255;
+				if (prim_color_a > 255) prim_color_a = 255;
+				if (prim_color_rgb.r < 0) prim_color_rgb.r = 0;
+				if (prim_color_rgb.g < 0) prim_color_rgb.g = 0;
+				if (prim_color_rgb.b < 0) prim_color_rgb.b = 0;
+				if (prim_color_a < 0) prim_color_a = 0;
+				SetPixelColor(p.x, p.y, Vec4<int>(prim_color_rgb.r, prim_color_rgb.g, prim_color_rgb.b, prim_color_a).ToRGBA());
 			}
 		}
 	}
