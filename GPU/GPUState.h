@@ -216,6 +216,8 @@ struct GPUgstate
 	bool isAlphaTestEnabled() const { return alphaTestEnable & 1; }
 	bool isColorTestEnabled() const { return colorTestEnable & 1; }
 
+	u32 getColorMask() const { return (pmskc & 0xFFFFFF) | ((pmska & 0xFF) << 24); }
+
 	bool isStencilTestEnabled() const { return stencilTestEnable & 1; }
 	int getStencilTestFunction() const { return stenciltest & 0x7; }
 	int getStencilTestRef() const { return (stenciltest>>8) & 0xFF; }
