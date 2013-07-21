@@ -102,7 +102,7 @@ static inline u32 DecodeRGBA8888(u32 src)
 static inline u32 LookupColor(u16 index)
 {
 	 // TODO: No idea if these bswaps are correct
-	switch (gstate.getClutFormat()) {
+	switch (gstate.getClutPaletteFormat()) {
 		case GE_TFMT_5650:
 			return DecodeRGB565(bswap16(*(u16*)&clut[index]));
 
