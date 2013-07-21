@@ -24,30 +24,16 @@
  * Vec2 - two dimensional vector with arbitrary base type
  */
 template<typename X, typename Y=X>
-class Vec2;
-
-// Like a Vec2, but acts on references
-template<typename X, typename Y=X>
-class Vec2Ref
+class Vec2
 {
-private:
-	// This one usually leads to confusing results and shouldn't be necessary outside the swizzlers anyway
-	// (why would one create a reference to something that is already accessible as a reference?)
-	Vec2Ref(const Vec2Ref& other) : x(other.x), y(other.y),
-									u(other.x), v(other.y),
-									s(other.x), t(other.y) {}
-
-	template<typename X2, typename Y2, typename Z2>
-	friend class Vec3Ref;
-	template<typename X2, typename Y2, typename Z2, typename W2>
-	friend class Vec4Ref;
-
 public:
 	struct
 	{
-		X& x;
-		Y& y;
+		X x;
+		Y y;
 	};
+
+	// aliases
 	struct
 	{
 		X& u;
@@ -61,10 +47,15 @@ public:
 
 	X* AsArray() { return &x; }
 
-	Vec2Ref(X& _x, Y& _y) : x(_x), y(_y), u(_x), v(_y), s(_x), t(_y) {}
+	Vec2() : u(x), v(y), s(x), t(y) {}
+	Vec2(const X& _x, const Y& _y) : x(_x), y(_y), u(x), v(y), s(x), t(y)  {}
+	Vec2(const X a[2]) : x(a[0]), y(a[1]), u(x), v(y), s(x), t(y) {}
+	Vec2(const Vec2& other) : x(other.x), y(other.y), u(x), v(y), s(x), t(y) {}
 
-	Vec2Ref(X a[2]) : x(a[0]), y(a[1]), u(a[0]), v(a[1]), s(a[0]), t(a[1]) {}
-	Vec2Ref(const Vec2<X,Y>& other);
+	static Vec2 AssignToAll(X f)
+	{
+		return Vec2(f, f, f);
+	}
 
 	template<typename X2, typename Y2>
 	Vec2<X2,Y2> Cast() const
@@ -78,16 +69,21 @@ public:
 	}
 
 	// operators acting on "this"
-	void operator = (const Vec2Ref& other)
+	Vec2& operator = (const Vec2& other)
 	{
+		if (this == &other)
+			return *this;
+
 		x = other.x;
 		y = other.y;
+
+		return *this;
 	}
-	void operator += (const Vec2Ref &other)
+	void operator += (const Vec2& other)
 	{
 		x+=other.x; y+=other.y;
 	}
-	void operator -= (const Vec2Ref &other)
+	void operator -= (const Vec2& other)
 	{
 		x-=other.x; y-=other.y;
 	}
@@ -102,12 +98,12 @@ public:
 	}
 
 	// operators which require creating a new Vec2 object
-	Vec2<X,Y> operator +(const Vec2Ref &other) const;
-	Vec2<X,Y> operator -(const Vec2Ref &other) const;
-	Vec2<X,Y> operator -() const;
-	Vec2<X,Y> operator *(const Vec2Ref &other) const;
-	Vec2<X,Y> operator * (const X& f) const;
-	Vec2<X,Y> operator / (const X& f) const;
+	Vec2 operator +(const Vec2& other) const;
+	Vec2 operator -(const Vec2& other) const;
+	Vec2 operator -() const;
+	Vec2 operator *(const Vec2& other) const;
+	Vec2 operator * (const X& f) const;
+	Vec2 operator / (const X& f) const;
 
 	// methods which don't create new Vec2 objects
 	// Length, SetLength and Normalize are only implemented for X=Y=Z=float
@@ -123,96 +119,69 @@ public:
 	}
 
 	// methods that create a new Vec2 object
-	Vec2<X,Y> WithLength(const X& l) const;
-	Vec2<X,Y> Normalized() const;
-	float Distance2To(const Vec2Ref &other) const;
+	Vec2 WithLength(const X& l) const;
+	Vec2 Normalized() const;
+	float Distance2To(const Vec2 &other) const;
 
-	// swizzlers - create a subvector of references to specific components
-	Vec2Ref<Y,X> yx() { return Vec2Ref(y, x); }
-	Vec2Ref<Y,X> vu() { return Vec2Ref(v, u); }
-	const Vec2Ref<Y,X> yx() const { return Vec2Ref(y, x); }
-	const Vec2Ref<Y,X> vu() const { return Vec2Ref(v, u); }
-};
-
-template<typename X, typename Y>
-class Vec2 : public Vec2Ref<X,Y>
-{
-public:
-	X x;
-	Y y;
-
-	Vec2() : Vec2Ref<X,Y>(x, y) {}
-	Vec2(const X& _x, const Y& _y) : Vec2Ref<X,Y>(x, y), x(_x), y(_y) {}
-	Vec2(const X a[2]) : Vec2Ref<X,Y>(x, y), x(a[0]), y(a[1]) {}
-	Vec2(const Vec2& other) : Vec2Ref<X,Y>(x, y), x(other.x), y(other.y) {}
-	Vec2(const Vec2Ref<X,Y>& other) : Vec2Ref<X,Y>(x, y), x(other.x), y(other.y) {}
-
-	static Vec2 AssignToAll(X f)
-	{
-		return Vec2(f, f, f);
-	}
+	// swizzlers - create a subvector of specific components
+	const Vec2<Y,X> yx() const { return Vec2<Y,X>(y, x); }
+	const Vec2<Y,X> vu() const { return Vec2<Y,X>(v, u); }
+	const Vec2<Y,X> ts() const { return Vec2<Y,X>(t, s); }
 };
 
 typedef Vec2<float> Vec2f;
 
 template<typename X, typename Y>
-Vec2Ref<X,Y>::Vec2Ref(const Vec2<X,Y>& other) : x(other.x), y(other.y),
-												s(other.x), t(other.y),
-												u(other.x), v(other.y)
-{
-}
-
-template<typename X, typename Y>
-Vec2<X,Y> Vec2Ref<X,Y>::operator +(const Vec2Ref<X,Y> &other) const
+Vec2<X,Y> Vec2<X,Y>::operator +(const Vec2<X,Y>& other) const
 {
 	return Vec2<X,Y>(x+other.x, y+other.y);
 }
 
 template<typename X, typename Y>
-Vec2<X,Y> Vec2Ref<X,Y>::operator -(const Vec2Ref<X,Y> &other) const
+Vec2<X,Y> Vec2<X,Y>::operator -(const Vec2<X,Y>& other) const
 {
 	return Vec2<X,Y>(x-other.x, y-other.y);
 }
 
 template<typename X, typename Y>
-Vec2<X,Y> Vec2Ref<X,Y>::operator -() const
+Vec2<X,Y> Vec2<X,Y>::operator -() const
 {
 	return Vec2<X,Y>(-x,-y);
 }
 
 template<typename X, typename Y>
-Vec2<X,Y> Vec2Ref<X,Y>::operator *(const Vec2Ref<X,Y> &other) const
+Vec2<X,Y> Vec2<X,Y>::operator *(const Vec2<X,Y>& other) const
 {
 	return Vec2<X,Y>(x*other.x, y*other.y);
 }
 
 template<typename X, typename Y>
-Vec2<X,Y> Vec2Ref<X,Y>::operator * (const X& f) const
+Vec2<X,Y> Vec2<X,Y>::operator * (const X& f) const
 {
 	return Vec2<X,Y>(x*f,y*f);
 }
 
 template<typename X, typename Y>
-Vec2<X,Y> operator * (const X& f, const Vec2Ref<X,Y>& vec)
+Vec2<X,Y> operator * (const X& f, const Vec2<X,Y>& vec)
 {
 	return Vec2<X,Y>(f*vec.x, f*vec.y);
 }
 
 template<typename X, typename Y>
-Vec2<X,Y> Vec2Ref<X,Y>::operator / (const X& f) const
+Vec2<X,Y> Vec2<X,Y>::operator / (const X& f) const
 {
 	float invf = (1.0f/f);
 	return Vec2<X,Y>(x*invf,y*invf);
 }
 
 template<typename X, typename Y>
-Vec2<X,Y> Vec2Ref<X,Y>::WithLength(const X& l) const
+Vec2<X,Y> Vec2<X,Y>::WithLength(const X& l) const
 {
 	return (*this) * l / Length();
 }
 
 template<typename X, typename Y>
-Vec2<X,Y> Vec2Ref<X,Y>::Normalized() const
+Vec2<X,Y> Vec2<X,Y>::Normalized() const
 {
 	return (*this) / Length();
 }
@@ -220,28 +189,28 @@ Vec2<X,Y> Vec2Ref<X,Y>::Normalized() const
 // Template specializations below
 // Many functions only really make sense for floating point vectors and/or when the base types for each component are equal.
 template<typename X, typename Y>
-X Vec2Ref<X,Y>::Length2() const
+X Vec2<X,Y>::Length2() const
 {
 	static_assert(std::is_same<X,Y>::value, "base types need to be equal");
 	return x*x + y*y;
 }
 
 template<typename X, typename Y>
-X& Vec2Ref<X,Y>::operator [] (int i) //allow vector[1] = 3   (vector.y=3)
+X& Vec2<X,Y>::operator [] (int i) //allow vector[1] = 3   (vector.y=3)
 {
 	static_assert(std::is_same<X,Y>::value, "base types need to be equal");
 	return (i==0) ? x : y;
 }
 
 template<typename X, typename Y>
-X Vec2Ref<X,Y>::operator [] (const int i) const
+X Vec2<X,Y>::operator [] (const int i) const
 {
 	static_assert(std::is_same<X,Y>::value, "base types need to be equal");
 	return (i==0) ? x : y;
 }
 
 template<typename X, typename Y>
-float Vec2Ref<X,Y>::Distance2To(const Vec2Ref<X,Y>& other) const
+float Vec2<X,Y>::Distance2To(const Vec2<X,Y>& other) const
 {
 	return (other-(*this)).Length2();
 }
@@ -250,29 +219,17 @@ float Vec2Ref<X,Y>::Distance2To(const Vec2Ref<X,Y>& other) const
  * Vec3 - three dimensional vector with arbitrary base type
  */
 template<typename X, typename Y=X, typename Z=X>
-class Vec3;
-
-// Like a Vec3, but acts on references
-template<typename X, typename Y=X, typename Z=X>
-class Vec3Ref
+class Vec3
 {
-private:
-	// This one usually leads to confusing results and shouldn't be necessary outside the swizzlers anyway
-	// (why would one create a reference to something that is already accessible as a reference?)
-	Vec3Ref(const Vec3Ref& other) : x(other.x), y(other.y), z(other.z),
-									r(other.x), g(other.y), b(other.z),
-									u(other.x), v(other.y), w(other.z) {}
-
-	template<typename X2, typename Y2, typename Z2, typename W2>
-	friend class Vec4Ref;
-
 public:
 	struct
 	{
-		X& x;
-		Y& y;
-		Z& z;
+		X x;
+		Y y;
+		Z z;
 	};
+
+	// aliases
 	struct
 	{
 		X& r;
@@ -288,15 +245,18 @@ public:
 
 	X* AsArray() { return &x; }
 
-	Vec3Ref(X& _x, Y& _y, Z& _z) : x(_x), y(_y), z(_z),
-									r(_x), g(_y), b(_z),
-									u(_x), v(_y), w(_z) {}
+	Vec3() : r(x), g(y), b(z), u(x), v(y), w(z) {}
+	Vec3(const X& _x, const Y& _y, const Z& _z) : x(_x), y(_y), z(_z), r(x), g(y), b(z), u(x), v(y), w(z) {}
+	Vec3(const X a[3]) : x(a[0]), y(a[1]), z(a[2]), r(x), g(y), b(z), u(x), v(y), w(z) {}
+	Vec3(const Vec3& other) : x(other.x), y(other.y), z(other.z), r(x), g(y), b(z), u(x), v(y), w(z) {}
 
-	Vec3Ref(X a[3]) : x(a[0]), y(a[1]), z(a[2]),
-						r(a[0]), g(a[1]), b(a[2]),
-						u(a[0]), v(a[1]), w(a[2]) {}
+	// Only defined for X=float and X=int
+	static Vec3 FromRGB(unsigned int rgb);
 
-	Vec3Ref(const Vec3<X,Y,Z>& other);
+	static Vec3 AssignToAll(X f)
+	{
+		return Vec3(f, f, f);
+	}
 
 	template<typename X2, typename Y2, typename Z2>
 	Vec3<X2,Y2,Z2> Cast() const
@@ -313,17 +273,22 @@ public:
 	unsigned int ToRGB() const;
 
 	// operators acting on "this"
-	void operator = (const Vec3Ref& other)
+	Vec3& operator = (const Vec3& other)
 	{
+		if (this == &other)
+			return *this;
+
 		x = other.x;
 		y = other.y;
 		z = other.z;
+
+		return *this;
 	}
-	void operator += (const Vec3Ref &other)
+	void operator += (const Vec3& other)
 	{
 		x+=other.x; y+=other.y; z+=other.z;
 	}
-	void operator -= (const Vec3Ref &other)
+	void operator -= (const Vec3& other)
 	{
 		x-=other.x; y-=other.y; z-=other.z;
 	}
@@ -338,12 +303,12 @@ public:
 	}
 
 	// operators which require creating a new Vec3 object
-	Vec3<X,Y,Z> operator +(const Vec3Ref &other) const;
-	Vec3<X,Y,Z> operator -(const Vec3Ref &other) const;
-	Vec3<X,Y,Z> operator -() const;
-	Vec3<X,Y,Z> operator *(const Vec3Ref &other) const;
-	Vec3<X,Y,Z> operator * (const X& f) const;
-	Vec3<X,Y,Z> operator / (const X& f) const;
+	Vec3 operator +(const Vec3 &other) const;
+	Vec3 operator -(const Vec3 &other) const;
+	Vec3 operator -() const;
+	Vec3 operator *(const Vec3 &other) const;
+	Vec3 operator * (const X& f) const;
+	Vec3 operator / (const X& f) const;
 
 	// methods which don't create new Vec3 objects
 	// Length, SetLength and Normalize are only implemented for X=Y=Z=float
@@ -359,107 +324,77 @@ public:
 	}
 
 	// methods that create a new Vec3 object
-	Vec3<X,Y,Z> WithLength(const X& l) const;
-	Vec3<X,Y,Z> Normalized() const;
-	float Distance2To(const Vec3Ref &other) const;
+	Vec3 WithLength(const X& l) const;
+	Vec3 Normalized() const;
+	float Distance2To(const Vec3 &other) const;
 
-	// swizzlers - create a subvector of references to specific components
-	// e.g. Vec2Ref<X,Y> xy() { return Vec2Ref<X,Y>(x,y); }
-	// _DEFINE_SWIZZLER2 defines a single such function (and its "const" version)
+	// swizzlers - create a subvector of specific components
+	// e.g. Ref<X,Y> xy() { return Vec2<X,Y>(x,y); }
+	// _DEFINE_SWIZZLER2 defines a single such function
 	// DEFINE_SWIZZLER2 defines all of them for all component names (x<->r) and permutations (xy<->yx)
 
-#define _DEFINE_SWIZZLER2(a, b, A, B) Vec2Ref<A,B> a##b() { return Vec2Ref<A,B>(a,b); }; const Vec2Ref<A,B> a##b() const { return Vec2Ref<A,B>(a,b); }
-#define DEFINE_SWIZZLER2(a, b, a2, b2, a3, b3, A, B) _DEFINE_SWIZZLER2(a, b, A, B); _DEFINE_SWIZZLER2(a2, b2, A, B); _DEFINE_SWIZZLER2(a3, b3, A, B); _DEFINE_SWIZZLER2(b, a, B, A); _DEFINE_SWIZZLER2(b2, a2, B, A); _DEFINE_SWIZZLER2(b3, a3, B, A);
+	#define _DEFINE_SWIZZLER2(a, b, A, B) const Vec2<A,B> a##b() const { return Vec2<A,B>(a,b); }
+	#define DEFINE_SWIZZLER2(a, b, a2, b2, a3, b3, A, B) _DEFINE_SWIZZLER2(a, b, A, B); _DEFINE_SWIZZLER2(a2, b2, A, B); _DEFINE_SWIZZLER2(a3, b3, A, B); _DEFINE_SWIZZLER2(b, a, B, A); _DEFINE_SWIZZLER2(b2, a2, B, A); _DEFINE_SWIZZLER2(b3, a3, B, A);
 	DEFINE_SWIZZLER2(x, y, r, g, u, v, X, Y);
 	DEFINE_SWIZZLER2(x, z, r, b, u, w, X, Z);
 	DEFINE_SWIZZLER2(y, z, g, b, v, w, Y, Z);
-#undef DEFINE_SWIZZLER2
-#undef _DEFINE_SWIZZLER2
-};
-
-template<typename X, typename Y, typename Z>
-class Vec3 : public Vec3Ref<X,Y,Z>
-{
-public:
-	X x;
-	Y y;
-	Z z;
-
-	Vec3() : Vec3Ref<X,Y,Z>(x, y, z) {}
-	Vec3(const X& _x, const Y& _y, const Z& _z) : Vec3Ref<X,Y,Z>(x, y, z), x(_x), y(_y), z(_z) {}
-	Vec3(const X a[3]) : Vec3Ref<X,Y,Z>(x, y, z), x(a[0]), y(a[1]), z(a[2]) {}
-	Vec3(const Vec3& other) : Vec3Ref<X,Y,Z>(x, y, z), x(other.x), y(other.y), z(other.z) {}
-	Vec3(const Vec3Ref<X,Y,Z>& other) : Vec3Ref<X,Y,Z>(x, y, z), x(other.x), y(other.y), z(other.z) {}
-
-	// Only defined for X=float and X=int
-	static Vec3 FromRGB(unsigned int rgb);
-
-	static Vec3 AssignToAll(X f)
-	{
-		return Vec3(f, f, f);
-	}
+	#undef DEFINE_SWIZZLER2
+	#undef _DEFINE_SWIZZLER2
 };
 
 typedef Vec3<float> Vec3f;
 
 template<typename X, typename Y, typename Z>
-Vec3Ref<X,Y,Z>::Vec3Ref(const Vec3<X,Y,Z>& other) : x(other.x), y(other.y), z(other.z),
-													r(other.x), g(other.y), b(other.z),
-													u(other.x), v(other.y), w(other.z)
-{
-}
-
-template<typename X, typename Y, typename Z>
-Vec3<X,Y,Z> Vec3Ref<X,Y,Z>::operator +(const Vec3Ref<X,Y,Z> &other) const
+Vec3<X,Y,Z> Vec3<X,Y,Z>::operator +(const Vec3<X,Y,Z> &other) const
 {
 	return Vec3<X,Y,Z>(x+other.x, y+other.y, z+other.z);
 }
 
 template<typename X, typename Y, typename Z>
-Vec3<X,Y,Z> Vec3Ref<X,Y,Z>::operator -(const Vec3Ref<X,Y,Z> &other) const
+Vec3<X,Y,Z> Vec3<X,Y,Z>::operator -(const Vec3<X,Y,Z> &other) const
 {
 	return Vec3<X,Y,Z>(x-other.x, y-other.y, z-other.z);
 }
 
 template<typename X, typename Y, typename Z>
-Vec3<X,Y,Z> Vec3Ref<X,Y,Z>::operator -() const
+Vec3<X,Y,Z> Vec3<X,Y,Z>::operator -() const
 {
 	return Vec3<X,Y,Z>(-x,-y,-z);
 }
 
 template<typename X, typename Y, typename Z>
-Vec3<X,Y,Z> Vec3Ref<X,Y,Z>::operator *(const Vec3Ref<X,Y,Z> &other) const
+Vec3<X,Y,Z> Vec3<X,Y,Z>::operator *(const Vec3<X,Y,Z> &other) const
 {
 	return Vec3<X,Y,Z>(x*other.x, y*other.y, z*other.z);
 }
 
 template<typename X, typename Y, typename Z>
-Vec3<X,Y,Z> Vec3Ref<X,Y,Z>::operator * (const X& f) const
+Vec3<X,Y,Z> Vec3<X,Y,Z>::operator * (const X& f) const
 {
 	return Vec3<X,Y,Z>(x*f,y*f,z*f);
 }
 
 template<typename X, typename Y, typename Z>
-Vec3<X,Y,Z> operator * (const X& f, const Vec3Ref<X,Y,Z>& vec)
+Vec3<X,Y,Z> operator * (const X& f, const Vec3<X,Y,Z>& vec)
 {
 	return Vec3<X,Y,Z>(f*vec.x, f*vec.y, f*vec.z);
 }
 
 template<typename X, typename Y, typename Z>
-Vec3<X,Y,Z> Vec3Ref<X,Y,Z>::operator / (const X& f) const
+Vec3<X,Y,Z> Vec3<X,Y,Z>::operator / (const X& f) const
 {
 	float invf = (1.0f/f);
 	return Vec3<X,Y,Z>(x*invf,y*invf,z*invf);
 }
 
 template<typename X, typename Y, typename Z>
-Vec3<X,Y,Z> Vec3Ref<X,Y,Z>::WithLength(const X& l) const
+Vec3<X,Y,Z> Vec3<X,Y,Z>::WithLength(const X& l) const
 {
 	return (*this) * l / Length();
 }
 
 template<typename X, typename Y, typename Z>
-Vec3<X,Y,Z> Vec3Ref<X,Y,Z>::Normalized() const
+Vec3<X,Y,Z> Vec3<X,Y,Z>::Normalized() const
 {
 	return (*this) / Length();
 }
@@ -467,7 +402,7 @@ Vec3<X,Y,Z> Vec3Ref<X,Y,Z>::Normalized() const
 // Template specializations below
 // Many functions only really make sense for floating point vectors and/or when the base types for each component are equal.
 template<typename X, typename Y, typename Z>
-X Vec3Ref<X,Y,Z>::Length2() const
+X Vec3<X,Y,Z>::Length2() const
 {
 	static_assert(std::is_same<X,Y>::value, "base types need to be equal");
 	static_assert(std::is_same<X,Z>::value, "base types need to be equal");
@@ -475,7 +410,7 @@ X Vec3Ref<X,Y,Z>::Length2() const
 }
 
 template<typename X, typename Y, typename Z>
-X& Vec3Ref<X,Y,Z>::operator [] (int i) //allow vector[1] = 3   (vector.y=3)
+X& Vec3<X,Y,Z>::operator [] (int i) //allow vector[1] = 3   (vector.y=3)
 {
 	static_assert(std::is_same<X,Y>::value, "base types need to be equal");
 	static_assert(std::is_same<X,Z>::value, "base types need to be equal");
@@ -483,7 +418,7 @@ X& Vec3Ref<X,Y,Z>::operator [] (int i) //allow vector[1] = 3   (vector.y=3)
 }
 
 template<typename X, typename Y, typename Z>
-X Vec3Ref<X,Y,Z>::operator [] (const int i) const
+X Vec3<X,Y,Z>::operator [] (const int i) const
 {
 	static_assert(std::is_same<X,Y>::value, "base types need to be equal");
 	static_assert(std::is_same<X,Z>::value, "base types need to be equal");
@@ -491,7 +426,7 @@ X Vec3Ref<X,Y,Z>::operator [] (const int i) const
 }
 
 template<typename X, typename Y, typename Z>
-float Vec3Ref<X,Y,Z>::Distance2To(const Vec3Ref<X,Y,Z>& other) const
+float Vec3<X,Y,Z>::Distance2To(const Vec3<X,Y,Z>& other) const
 {
 	return (other-(*this)).Length2();
 }
@@ -500,25 +435,18 @@ float Vec3Ref<X,Y,Z>::Distance2To(const Vec3Ref<X,Y,Z>& other) const
  * Vec4 - four dimensional vector with arbitrary base type
  */
 template<typename X, typename Y=X, typename Z=X, typename W=X>
-class Vec4;
-
-// Like a Vec3, but acts on references
-template<typename X, typename Y=X, typename Z=X, typename W=X>
-class Vec4Ref
+class Vec4
 {
-private:
-	// This one usually leads to confusing results and shouldn't be necessary outside the swizzlers anyway
-	// (why would one create a reference to something that is already accessible as a reference?)
-	Vec4Ref(const Vec4Ref& other);
-
 public:
 	struct
 	{
-		X& x;
-		Y& y;
-		Z& z;
-		W& w;
+		X x;
+		Y y;
+		Z z;
+		W w;
 	};
+
+	// aliases
 	struct
 	{
 		X& r;
@@ -529,13 +457,18 @@ public:
 
 	X* AsArray() { return &x; }
 
-	Vec4Ref(X& _x, Y& _y, Z& _z, W& _w) : x(_x), y(_y), z(_z), w(_w),
-											r(_x), g(_y), b(_z), a(_w) {}
+	Vec4() : r(x), g(y), b(z), a(w) {}
+	Vec4(const X& _x, const Y& _y, const Z& _z, const W& _w) : x(_x), y(_y), z(_z), w(_w), r(x), g(y), b(z), a(w) {}
+	Vec4(const X a[4]) : x(a[0]), y(a[1]), z(a[2]), w(a[3]), r(x), g(y), b(z), a(w) {}
+	Vec4(const Vec4& other) : x(other.x), y(other.y), z(other.z), w(other.w), r(x), g(y), b(z), a(w) {}
 
-	Vec4Ref(X a[4]) : x(a[0]), y(a[1]), z(a[2]), w(a[3]),
-						r(a[0]), g(a[1]), b(a[2]), a(a[3]) {}
+	// Only defined for X=float and X=int
+	static Vec4 FromRGBA(unsigned int rgba);
 
-	Vec4Ref(const Vec4<X,Y,Z,W>& other);
+	static Vec4 AssignToAll(X f)
+	{
+		return Vec4(f, f, f, f);
+	}
 
 	template<typename X2, typename Y2, typename Z2, typename W2>
 	Vec4<X2,Y2,Z2,W2> Cast() const
@@ -552,18 +485,23 @@ public:
 	unsigned int ToRGBA() const;
 
 	// operators acting on "this"
-	void operator = (const Vec4Ref& other)
+	Vec4& operator = (const Vec4& other)
 	{
+		if (this == &other)
+			return *this;
+
 		x = other.x;
 		y = other.y;
 		z = other.z;
 		w = other.w;
+
+		return *this;
 	}
-	void operator += (const Vec4Ref &other)
+	void operator += (const Vec4 &other)
 	{
 		x+=other.x; y+=other.y; z+=other.z; w+=other.w;
 	}
-	void operator -= (const Vec4Ref &other)
+	void operator -= (const Vec4 &other)
 	{
 		x-=other.x; y-=other.y; z-=other.z; w-=other.w;
 	}
@@ -578,12 +516,12 @@ public:
 	}
 
 	// operators which require creating a new Vec4 object
-	Vec4<X,Y,Z,W> operator +(const Vec4Ref &other) const;
-	Vec4<X,Y,Z,W> operator -(const Vec4Ref &other) const;
-	Vec4<X,Y,Z,W> operator -() const;
-	Vec4<X,Y,Z,W> operator *(const Vec4Ref &other) const;
-	Vec4<X,Y,Z,W> operator * (const X& f) const;
-	Vec4<X,Y,Z,W> operator / (const X& f) const;
+	Vec4 operator +(const Vec4 &other) const;
+	Vec4 operator -(const Vec4 &other) const;
+	Vec4 operator -() const;
+	Vec4 operator *(const Vec4 &other) const;
+	Vec4 operator * (const X& f) const;
+	Vec4 operator / (const X& f) const;
 
 	// methods which don't create new Vec4 objects
 	// Length, SetLength and Normalize are only implemented for X=Y=Z=float
@@ -599,28 +537,28 @@ public:
 	}
 
 	// methods that create a new Vec4 object
-	Vec4<X,Y,Z,W> WithLength(const X& l) const;
-	Vec4<X,Y,Z,W> Normalized() const;
-	float Distance2To(const Vec4Ref &other) const;
+	Vec4 WithLength(const X& l) const;
+	Vec4 Normalized() const;
+	float Distance2To(const Vec4 &other) const;
 
-	// swizzlers - create a subvector of references to specific components
-	// e.g. Vec2Ref<X,Y> xy() { return Vec2Ref<X,Y>(x,y); }
-	// _DEFINE_SWIZZLER2 defines a single such function (and its "const" version)
+	// swizzlers - create a subvector of specific components
+	// e.g. Vec2<X,Y> xy() { return Vec2<X,Y>(x,y); }
+	// _DEFINE_SWIZZLER2 defines a single such function
 	// DEFINE_SWIZZLER2 defines all of them for all component names (x<->r) and permutations (xy<->yx)
 
-#define _DEFINE_SWIZZLER2(a, b, A, B) Vec2Ref<A,B> a##b() { return Vec2Ref<A,B>(a,b); }; const Vec2Ref<A,B> a##b() const { return Vec2Ref<A,B>(a,b); }
-#define DEFINE_SWIZZLER2(a, b, a2, b2, A, B) _DEFINE_SWIZZLER2(a, b, A, B); _DEFINE_SWIZZLER2(a2, b2, A, B); _DEFINE_SWIZZLER2(b, a, B, A); _DEFINE_SWIZZLER2(b2, a2, B, A);
+	#define _DEFINE_SWIZZLER2(a, b, A, B) const Vec2<A,B> a##b() const { return Vec2<A,B>(a,b); }
+	#define DEFINE_SWIZZLER2(a, b, a2, b2, A, B) _DEFINE_SWIZZLER2(a, b, A, B); _DEFINE_SWIZZLER2(a2, b2, A, B); _DEFINE_SWIZZLER2(b, a, B, A); _DEFINE_SWIZZLER2(b2, a2, B, A);
 	DEFINE_SWIZZLER2(x, y, r, g, X, Y);
 	DEFINE_SWIZZLER2(x, z, r, b, X, Z);
 	DEFINE_SWIZZLER2(x, w, r, a, X, W);
 	DEFINE_SWIZZLER2(y, z, g, b, Y, Z);
 	DEFINE_SWIZZLER2(y, w, g, a, Y, W);
 	DEFINE_SWIZZLER2(z, w, b, a, Z, W);
-#undef DEFINE_SWIZZLER2
-#undef _DEFINE_SWIZZLER2
+	#undef DEFINE_SWIZZLER2
+	#undef _DEFINE_SWIZZLER2
 
-#define _DEFINE_SWIZZLER3(a, b, c, A, B, C) Vec3Ref<A,B,C> a##b##c() { return Vec3Ref<A,B,C>(a,b,c); }; const Vec3Ref<A,B,C> a##b##c() const { return Vec3Ref<A,B,C>(a,b,c); }
-#define DEFINE_SWIZZLER3(a, b, c, a2, b2, c2, A, B, C) \
+	#define _DEFINE_SWIZZLER3(a, b, c, A, B, C) const Vec3<A,B,C> a##b##c() const { return Vec3<A,B,C>(a,b,c); }
+	#define DEFINE_SWIZZLER3(a, b, c, a2, b2, c2, A, B, C) \
 	_DEFINE_SWIZZLER3(a, b, c, A, B, C); \
 	_DEFINE_SWIZZLER3(a, c, b, A, C, B); \
 	_DEFINE_SWIZZLER3(b, a, c, B, A, C); \
@@ -638,93 +576,63 @@ public:
 	DEFINE_SWIZZLER3(x, y, w, r, g, a, X, Y, W);
 	DEFINE_SWIZZLER3(x, z, w, r, b, a, X, Z, W);
 	DEFINE_SWIZZLER3(y, z, w, g, b, a, Y, Z, W);
-#undef DEFINE_SWIZZLER3
-#undef _DEFINE_SWIZZLER3
-};
-
-template<typename X, typename Y, typename Z, typename W>
-class Vec4 : public Vec4Ref<X,Y,Z,W>
-{
-public:
-	X x;
-	Y y;
-	Z z;
-	W w;
-
-	Vec4() : Vec4Ref<X,Y,Z,W>(x, y, z, w) {}
-	Vec4(const X& _x, const Y& _y, const Z& _z, const W& _w) : Vec4Ref<X,Y,Z,W>(x, y, z, w), x(_x), y(_y), z(_z), w(_w) {}
-	Vec4(const X a[4]) : Vec4Ref<X,Y,Z,W>(x, y, z, w), x(a[0]), y(a[1]), z(a[2]), w(a[3]) {}
-	Vec4(const Vec4& other) : Vec4Ref<X,Y,Z,W>(x, y, z, w), x(other.x), y(other.y), z(other.z), w(other.w) {}
-	Vec4(const Vec4Ref<X,Y,Z,W>& other) : Vec4Ref<X,Y,Z,W>(x, y, z, w), x(other.x), y(other.y), z(other.z), w(other.w) {}
-
-	// Only defined for X=float and X=int
-	static Vec4 FromRGBA(unsigned int rgba);
-
-	static Vec4 AssignToAll(X f)
-	{
-		return Vec4(f, f, f, f);
-	}
+	#undef DEFINE_SWIZZLER3
+	#undef _DEFINE_SWIZZLER3
 };
 
 typedef Vec4<float> Vec4f;
 
 template<typename X, typename Y, typename Z, typename W>
-Vec4Ref<X,Y,Z,W>::Vec4Ref(const Vec4<X,Y,Z,W>& other) : x(other.x), y(other.y), z(other.z), w(other.w),
-														r(other.x), g(other.y), b(other.z), a(other.w)
-{
-}
-
-template<typename X, typename Y, typename Z, typename W>
-Vec4<X,Y,Z,W> Vec4Ref<X,Y,Z,W>::operator +(const Vec4Ref<X,Y,Z,W> &other) const
+Vec4<X,Y,Z,W> Vec4<X,Y,Z,W>::operator +(const Vec4<X,Y,Z,W> &other) const
 {
 	return Vec4<X,Y,Z,W>(x+other.x, y+other.y, z+other.z, w+other.w);
 }
 
 template<typename X, typename Y, typename Z, typename W>
-Vec4<X,Y,Z,W> Vec4Ref<X,Y,Z,W>::operator -(const Vec4Ref<X,Y,Z,W> &other) const
+Vec4<X,Y,Z,W> Vec4<X,Y,Z,W>::operator -(const Vec4<X,Y,Z,W> &other) const
 {
 	return Vec4<X,Y,Z,W>(x-other.x, y-other.y, z-other.z, w-other.w);
 }
 
 template<typename X, typename Y, typename Z, typename W>
-Vec4<X,Y,Z,W> Vec4Ref<X,Y,Z,W>::operator -() const
+Vec4<X,Y,Z,W> Vec4<X,Y,Z,W>::operator -() const
 {
 	return Vec4<X,Y,Z,W>(-x,-y,-z,-w);
 }
 
 template<typename X, typename Y, typename Z, typename W>
-Vec4<X,Y,Z,W> Vec4Ref<X,Y,Z,W>::operator *(const Vec4Ref<X,Y,Z,W> &other) const
+Vec4<X,Y,Z,W> Vec4<X,Y,Z,W>::operator *(const Vec4<X,Y,Z,W> &other) const
 {
 	return Vec4<X,Y,Z,W>(x*other.x, y*other.y, z*other.z, w*other.w);
 }
 
 template<typename X, typename Y, typename Z, typename W>
-Vec4<X,Y,Z,W> Vec4Ref<X,Y,Z,W>::operator * (const X& f) const
+Vec4<X,Y,Z,W> Vec4<X,Y,Z,W>::operator * (const X& f) const
 {
 	return Vec4<X,Y,Z,W>(x*f,y*f,z*f,w*f);
 }
 
 template<typename X, typename Y, typename Z, typename W>
-Vec4<X,Y,Z,W> operator * (const X& f, const Vec4Ref<X,Y,Z,W>& vec)
+Vec4<X,Y,Z,W> operator * (const X& f, const Vec4<X,Y,Z,W>& vec)
 {
 	return Vec4<X,Y,Z,W>(f*vec.x, f*vec.y, f*vec.z, f*vec.w);
 }
 
 template<typename X, typename Y, typename Z, typename W>
-Vec4<X,Y,Z,W> Vec4Ref<X,Y,Z,W>::operator / (const X& f) const
+Vec4<X,Y,Z,W> Vec4<X,Y,Z,W>::operator / (const X& f) const
 {
 	float invf = (1.0f/f);
 	return Vec4<X,Y,Z,W>(x*invf,y*invf,z*invf,w*invf);
 }
 
 template<typename X, typename Y, typename Z, typename W>
-Vec4<X,Y,Z,W> Vec4Ref<X,Y,Z,W>::WithLength(const X& l) const
+Vec4<X,Y,Z,W> Vec4<X,Y,Z,W>::WithLength(const X& l) const
 {
 	return (*this) * l / Length();
 }
 
 template<typename X, typename Y, typename Z, typename W>
-Vec4<X,Y,Z,W> Vec4Ref<X,Y,Z,W>::Normalized() const
+Vec4<X,Y,Z,W> Vec4<X,Y,Z,W>::Normalized() const
 {
 	return (*this) / Length();
 }
@@ -732,7 +640,7 @@ Vec4<X,Y,Z,W> Vec4Ref<X,Y,Z,W>::Normalized() const
 // Template specializations below
 // Many functions only really make sense for floating point vectors and/or when the base types for each component are equal.
 template<typename X, typename Y, typename Z, typename W>
-X Vec4Ref<X,Y,Z,W>::Length2() const
+X Vec4<X,Y,Z,W>::Length2() const
 {
 	static_assert(std::is_same<X,Y>::value, "base types need to be equal");
 	static_assert(std::is_same<X,Z>::value, "base types need to be equal");
@@ -741,7 +649,7 @@ X Vec4Ref<X,Y,Z,W>::Length2() const
 }
 
 template<typename X, typename Y, typename Z, typename W>
-X& Vec4Ref<X,Y,Z,W>::operator [] (int i) //allow vector[1] = 3   (vector.y=3)
+X& Vec4<X,Y,Z,W>::operator [] (int i) //allow vector[1] = 3   (vector.y=3)
 {
 	static_assert(std::is_same<X,Y>::value, "base types need to be equal");
 	static_assert(std::is_same<X,Z>::value, "base types need to be equal");
@@ -750,7 +658,7 @@ X& Vec4Ref<X,Y,Z,W>::operator [] (int i) //allow vector[1] = 3   (vector.y=3)
 }
 
 template<typename X, typename Y, typename Z, typename W>
-X Vec4Ref<X,Y,Z,W>::operator [] (const int i) const
+X Vec4<X,Y,Z,W>::operator [] (const int i) const
 {
 	static_assert(std::is_same<X,Y>::value, "base types need to be equal");
 	static_assert(std::is_same<X,Z>::value, "base types need to be equal");
@@ -759,7 +667,7 @@ X Vec4Ref<X,Y,Z,W>::operator [] (const int i) const
 }
 
 template<typename X, typename Y, typename Z, typename W>
-float Vec4Ref<X,Y,Z,W>::Distance2To(const Vec4Ref<X,Y,Z,W>& other) const
+float Vec4<X,Y,Z,W>::Distance2To(const Vec4<X,Y,Z,W>& other) const
 {
 	return (other-(*this)).Length2();
 }
@@ -857,25 +765,25 @@ inline float Vec3Dot(const float v1[3], const float v2[3])
 
 // Dot product only really makes sense for same types
 template<typename X>
-inline X Dot(const Vec2Ref<X> &a, const Vec2Ref<X>& b)
+inline X Dot(const Vec2<X> &a, const Vec2<X>& b)
 {
 	return a.x*b.x + a.y*b.y;
 }
 
 template<typename X>
-inline X Dot(const Vec3Ref<X> &a, const Vec3Ref<X>& b)
+inline X Dot(const Vec3<X> &a, const Vec3<X>& b)
 {
 	return a.x*b.x + a.y*b.y + a.z*b.z;
 }
 
 template<typename X>
-inline X Dot(const Vec4Ref<X> &a, const Vec4Ref<X>& b)
+inline X Dot(const Vec4<X> &a, const Vec4<X>& b)
 {
 	return a.x*b.x + a.y*b.y + a.z*b.z + a.w*b.w;
 }
 
 template<typename X, typename Y, typename Z>
-inline Vec3<X,Y,Z> Cross(const Vec3Ref<X,Y,Z> &a, const Vec3Ref<X,Y,Z>& b)
+inline Vec3<X,Y,Z> Cross(const Vec3<X,Y,Z> &a, const Vec3<X,Y,Z>& b)
 {
 	return Vec3<X,Y,Z>(a.y*b.z-a.z*b.y, a.z*b.x-a.x*b.z, a.x*b.y-a.y*b.x);
 }

@@ -18,19 +18,19 @@
 #include "Math3D.h"
 
 template<>
-float Vec2Ref<float>::Length() const
+float Vec2<float>::Length() const
 {
 	return sqrtf(Length2());
 }
 
 template<>
-void Vec2Ref<float>::SetLength(const float l)
+void Vec2<float>::SetLength(const float l)
 {
 	(*this) *= l / Length();
 }
 
 template<>
-float Vec2Ref<float>::Normalize() //returns the previous length, is often useful
+float Vec2<float>::Normalize() //returns the previous length, is often useful
 {
 	float len = Length();
 	(*this) /= len;
@@ -54,7 +54,7 @@ Vec3<int> Vec3<int>::FromRGB(unsigned int rgb)
 }
 
 template<>
-unsigned int Vec3Ref<float>::ToRGB() const
+unsigned int Vec3<float>::ToRGB() const
 {
 	return ((unsigned int)(r*255.f)) +
 			((unsigned int)(g*255.f*256.f)) +
@@ -62,25 +62,25 @@ unsigned int Vec3Ref<float>::ToRGB() const
 }
 
 template<>
-unsigned int Vec3Ref<int>::ToRGB() const
+unsigned int Vec3<int>::ToRGB() const
 {
 	return (r&0xFF) | ((g&0xFF)<<8) | ((b&0xFF)<<16);
 }
 
 template<>
-float Vec3Ref<float>::Length() const
+float Vec3<float>::Length() const
 {
 	return sqrtf(Length2());
 }
 
 template<>
-void Vec3Ref<float>::SetLength(const float l)
+void Vec3<float>::SetLength(const float l)
 {
 	(*this) *= l / Length();
 }
 
 template<>
-float Vec3Ref<float>::Normalize() //returns the previous length, is often useful
+float Vec3<float>::Normalize() //returns the previous length, is often useful
 {
 	float len = Length();
 	(*this) /= len;
@@ -106,7 +106,7 @@ Vec4<int> Vec4<int>::FromRGBA(unsigned int rgba)
 }
 
 template<>
-unsigned int Vec4Ref<float>::ToRGBA() const
+unsigned int Vec4<float>::ToRGBA() const
 {
 	return ((unsigned int)(r*255.f)) +
 			((unsigned int)(g*255.f*256.f)) +
@@ -115,25 +115,25 @@ unsigned int Vec4Ref<float>::ToRGBA() const
 }
 
 template<>
-unsigned int Vec4Ref<int>::ToRGBA() const
+unsigned int Vec4<int>::ToRGBA() const
 {
 	return (r&0xFF) | ((g&0xFF)<<8) | ((b&0xFF)<<16) | ((a&0xFF)<<24);
 }
 
 template<>
-float Vec4Ref<float>::Length() const
+float Vec4<float>::Length() const
 {
 	return sqrtf(Length2());
 }
 
 template<>
-void Vec4Ref<float>::SetLength(const float l)
+void Vec4<float>::SetLength(const float l)
 {
 	(*this) *= l / Length();
 }
 
 template<>
-float Vec4Ref<float>::Normalize() //returns the previous length, is often useful
+float Vec4<float>::Normalize() //returns the previous length, is often useful
 {
 	float len = Length();
 	(*this) /= len;
