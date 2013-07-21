@@ -174,7 +174,7 @@ struct GPUgstate
 				dith2,
 				dith3,
 				dith4,
-				lop,
+				lop,                  // 0xE6
 				zmsk,
 				pmskc,
 				pmska,
@@ -217,6 +217,8 @@ struct GPUgstate
 	bool isColorTestEnabled() const { return colorTestEnable & 1; }
 
 	u32 getColorMask() const { return (pmskc & 0xFFFFFF) | ((pmska & 0xFF) << 24); }
+	bool isLogicOpEnabled() const { return logicOpEnable & 1; }
+	GELogicOp getLogicOp() const { return static_cast<GELogicOp>(lop & 0xF); }
 
 	bool isStencilTestEnabled() const { return stencilTestEnable & 1; }
 	int getStencilTestFunction() const { return stenciltest & 0x7; }
