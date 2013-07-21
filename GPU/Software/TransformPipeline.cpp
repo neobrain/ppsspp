@@ -172,7 +172,7 @@ void TransformUnit::SubmitPrimitive(void* vertices, void* indices, u32 prim_type
 	vdecoder.SetVertexType(vertex_type);
 	const DecVtxFormat& vtxfmt = vdecoder.GetDecVtxFmt();
 
-	u8 buf[65536 * 48]; // yolo
+	static u8 buf[65536 * 48]; // yolo
 	u16 index_lower_bound = 0;
 	u16 index_upper_bound = vertex_count - 1;
 	bool indices_8bit = (vertex_type & GE_VTYPE_IDX_MASK) == GE_VTYPE_IDX_8BIT;
