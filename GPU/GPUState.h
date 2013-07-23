@@ -207,9 +207,6 @@ struct GPUgstate
 	u32 getFixB() const { return blendfixb & 0xFFFFFF; }
 	int getBlendFuncB() const { return (blend >> 4) & 0xF; }
 	int getBlendEq()    const { return (blend >> 8) & 0x7; }
-	bool isDepthTestEnabled() const { return zTestEnable & 1; }
-	bool isDepthWriteEnabled() const { return !(zmsk & 1); }
-	int getDepthTestFunc() const { return ztestfunc & 0x7; }
 	bool isFogEnabled() const { return fogEnable & 1; }
 	bool isAlphaBlendEnabled() const { return alphaBlendEnable & 1; }
 	bool isDitherEnabled() const { return ditherEnable & 1; }
@@ -219,6 +216,13 @@ struct GPUgstate
 	u32 getColorMask() const { return (pmskc & 0xFFFFFF) | ((pmska & 0xFF) << 24); }
 	bool isLogicOpEnabled() const { return logicOpEnable & 1; }
 	GELogicOp getLogicOp() const { return static_cast<GELogicOp>(lop & 0xF); }
+
+	bool isDepthTestEnabled() const { return zTestEnable & 1; }
+	bool isDepthWriteEnabled() const { return !(zmsk & 1); }
+	int getDepthTestFunc() const { return ztestfunc & 0x7; }
+
+	u16 getDepthRangeMin() const { return minz & 0xFFFF; }
+	u16 getDepthRangeMax() const { return maxz & 0xFFFF; }
 
 	bool isStencilTestEnabled() const { return stencilTestEnable & 1; }
 	int getStencilTestFunction() const { return stenciltest & 0x7; }
