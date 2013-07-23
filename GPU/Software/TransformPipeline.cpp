@@ -218,7 +218,7 @@ void TransformUnit::SubmitPrimitive(void* vertices, void* indices, u32 prim_type
 			switch (prim_type) {
 			case GE_PRIM_TRIANGLES:
 			{
-				if (!gstate.isCullEnabled()) {
+				if (!gstate.isCullEnabled() || gstate.isModeClear()) {
 					Clipper::ProcessTriangle(data[0], data[1], data[2]);
 					Clipper::ProcessTriangle(data[2], data[1], data[0]);
 				} else if (!gstate.getCullMode())
@@ -256,7 +256,7 @@ void TransformUnit::SubmitPrimitive(void* vertices, void* indices, u32 prim_type
 				continue;
 			}
 
-			if (!gstate.isCullEnabled()) {
+			if (!gstate.isCullEnabled() || gstate.isModeClear()) {
 				Clipper::ProcessTriangle(data[0], data[1], data[2]);
 				Clipper::ProcessTriangle(data[2], data[1], data[0]);
 			} else if ((!gstate.getCullMode()) ^ (vtx % 2)) {
@@ -296,7 +296,7 @@ void TransformUnit::SubmitPrimitive(void* vertices, void* indices, u32 prim_type
 				continue;
 			}
 
-			if (!gstate.isCullEnabled()) {
+			if (!gstate.isCullEnabled() || gstate.isModeClear()) {
 				Clipper::ProcessTriangle(data[0], data[1], data[2]);
 				Clipper::ProcessTriangle(data[2], data[1], data[0]);
 			} else if ((!gstate.getCullMode()) ^ (vtx % 2)) {
