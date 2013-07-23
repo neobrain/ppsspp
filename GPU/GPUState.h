@@ -207,9 +207,6 @@ struct GPUgstate
 	u32 getFixB() const { return blendfixb & 0xFFFFFF; }
 	int getBlendFuncB() const { return (blend >> 4) & 0xF; }
 	int getBlendEq()    const { return (blend >> 8) & 0x7; }
-	bool isDepthTestEnabled() const { return zTestEnable & 1; }
-	bool isDepthWriteEnabled() const { return !(zmsk & 1); }
-	int getDepthTestFunc() const { return ztestfunc & 0x7; }
 	bool isFogEnabled() const { return fogEnable & 1; }
 	bool isAlphaBlendEnabled() const { return alphaBlendEnable & 1; }
 	bool isDitherEnabled() const { return ditherEnable & 1; }
@@ -235,6 +232,13 @@ struct GPUgstate
 	GEComparison getColorTestFunction() { return static_cast<GEComparison>(colortest & 0x3); }
 	u32 getColorTestRef() const { return colorref & 0xFFFFFF; }
 	u32 getColorTestMask() const { return colormask & 0xFFFFFF; }
+
+	bool isDepthTestEnabled() const { return zTestEnable & 1; }
+	bool isDepthWriteEnabled() const { return !(zmsk & 1); }
+	int getDepthTestFunc() const { return ztestfunc & 0x7; }
+
+	u16 getDepthRangeMin() const { return minz & 0xFFFF; }
+	u16 getDepthRangeMax() const { return maxz & 0xFFFF; }
 
 	// Texturing
 	bool isTextureMapEnabled() const { return textureMapEnable & 1; }
