@@ -715,7 +715,7 @@ void TransformDrawEngine::SoftwareTransformAndDraw(
 					uv[2] = 1.0f;
 				}
 				break;
-			case 3:
+			default:
 				// Illegal
 				break;
 			}
