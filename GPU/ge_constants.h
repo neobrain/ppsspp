@@ -502,6 +502,13 @@ enum GEPrimitiveType
 	GE_PRIM_RECTANGLES=6,
 };
 
+enum GEPatchPrimType
+{
+	GE_PATCHPRIM_TRIANGLES=0,
+	GE_PATCHPRIM_LINES=1,
+	GE_PATCHPRIM_POINTS=2,
+};
+
 enum GEPaletteFormat
 {
 	GE_CMODE_16BIT_BGR5650,

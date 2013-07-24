@@ -203,6 +203,8 @@ struct GPUgstate
 	u32 getClearModeColorMask() const { return ((clearmode&0x100) ? 0xFFFFFF : 0) | ((clearmode&0x200) ? 0xFF000000 : 0); } // TODO: Different convention than getColorMask, confusing!
 	bool isClearModeDepthWriteEnabled() const { return (clearmode&0x400) != 0; }
 
+	GEPatchPrimType getPatchPrimitiveType() const { return static_cast<GEPatchPrimType>(patchprimitive & 3); }
+
 	bool isCullEnabled() const { return cullfaceEnable & 1; }
 	int getCullMode()   const { return cullmode & 1; }
 	int getBlendFuncA() const { return blend & 0xF; }
