@@ -334,6 +334,7 @@ struct GPUgstate
 	int getNumBoneWeights() const {
 		return 1 + ((vertType & GE_VTYPE_WEIGHTCOUNT_MASK) >> GE_VTYPE_WEIGHTCOUNT_SHIFT);
 	}
+	bool isSkinningEnabled() const { return ((vertType & GE_VTYPE_WEIGHT_MASK) != GE_VTYPE_WEIGHT_NONE); }
 
 // Real data in the context ends here
 };
