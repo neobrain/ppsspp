@@ -114,6 +114,15 @@ DrawingCoords TransformUnit::ScreenToDrawing(const ScreenCoords& coords)
 	return ret;
 }
 
+ScreenCoords TransformUnit::DrawingToScreen(const DrawingCoords& coords)
+{
+	ScreenCoords ret;
+	ret.x = (((u32)coords.x * 16 + (gstate.offsetx&0xffff)));
+	ret.y = (((u32)coords.y * 16 + (gstate.offsety&0xffff)));
+	ret.z = coords.z;
+	return ret;
+}
+
 static VertexData ReadVertex(VertexReader& vreader)
 {
 	VertexData vertex;
@@ -177,7 +186,7 @@ static VertexData ReadVertex(VertexReader& vreader)
 		vertex.modelpos = ModelCoords(pos[0], pos[1], pos[2]);
 		vertex.worldpos = WorldCoords(TransformUnit::ModelToWorld(vertex.modelpos));
 		vertex.clippos = ClipCoords(TransformUnit::ViewToClip(TransformUnit::WorldToView(vertex.worldpos)));
-		vertex.drawpos = DrawingCoords(TransformUnit::ScreenToDrawing(ClipToScreenInternal(vertex.clippos)));
+		vertex.screenpos = ClipToScreenInternal(vertex.clippos);
 
 		if (vreader.hasNormal()) {
 			vertex.worldnormal = TransformUnit::ModelToWorld(vertex.normal) - Vec3<float>(gstate.worldMatrix[9], gstate.worldMatrix[10], gstate.worldMatrix[11]);
@@ -186,9 +195,9 @@ static VertexData ReadVertex(VertexReader& vreader)
 
 		Lighting::Process(vertex);
 	} else {
-		vertex.drawpos.x = pos[0];
-		vertex.drawpos.y = pos[1];
-		vertex.drawpos.z = pos[2];
+		vertex.screenpos.x = (u32)pos[0] * 16 + (gstate.offsetx&0xffff);
+		vertex.screenpos.y = (u32)pos[1] * 16 + (gstate.offsety&0xffff);
+		vertex.screenpos.z = pos[2];
 		vertex.clippos.w = 1.f;
 	}
 
