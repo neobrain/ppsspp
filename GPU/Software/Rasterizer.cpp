@@ -44,18 +44,19 @@ static inline int orient2dIncY(int dX01)
 	return -dX01;
 }
 
-static inline int GetPixelDataOffset(unsigned int texel_size_bits, unsigned int row_pitch_bits, unsigned int u, unsigned int v)
+template<unsigned int texel_size_bits>
+static inline int GetPixelDataOffset(unsigned int row_pitch_bits, unsigned int u, unsigned int v)
 {
 	if (!(gstate.texmode & 1))
-		return v * row_pitch_bits *texel_size_bits/8 / 8 + u * texel_size_bits / 8;
+		return v * row_pitch_bits * texel_size_bits / 8 / 8 + u * texel_size_bits / 8;
 
-	int tile_size_bits = 32;
-	int tiles_in_block_horizontal = 4;
-	int tiles_in_block_vertical = 8;
+	const unsigned int tile_size_bits = 32;
+	const unsigned int tiles_in_block_horizontal = 4;
+	const unsigned int tiles_in_block_vertical = 8;
 
-	int texels_per_tile = tile_size_bits / texel_size_bits;
-	int tile_u = u / texels_per_tile;
-	int tile_idx = (v % tiles_in_block_vertical) * (tiles_in_block_horizontal) +
+	const unsigned int texels_per_tile = tile_size_bits / texel_size_bits;
+	const unsigned int tile_u = u / texels_per_tile;
+	unsigned int tile_idx = (v % tiles_in_block_vertical) * (tiles_in_block_horizontal) +
 	// TODO: not sure if the *texel_size_bits/8 factor is correct
 					(v / tiles_in_block_vertical) * ((row_pitch_bits*texel_size_bits/8/tile_size_bits)*tiles_in_block_vertical) +
 					(tile_u % tiles_in_block_horizontal) +
@@ -99,33 +100,32 @@ static inline u32 GetClutIndex(u32 index) {
 
 static inline void GetTexelCoordinates(int level, float s, float t, unsigned int& u, unsigned int& v)
 {
-	s *= getFloat24(gstate.texscaleu);
-	t *= getFloat24(gstate.texscalev);
+	s *= getFloat24(gstate.texscaleu) + getFloat24(gstate.texoffsetu);
+	t *= getFloat24(gstate.texscalev) + getFloat24(gstate.texoffsetv);
 
-	s += getFloat24(gstate.texoffsetu);
-	t += getFloat24(gstate.texoffsetv);
+	int width = (1 << (gstate.texsize[level] & 0xf)) - 1;
+	int height = (1 << ((gstate.texsize[level]>>8) & 0xf)) - 1;
 
-	// TODO: Is this really only necessary for UV mapping?
+	int u2, v2;
+	u2 = s * width;
+	v2 = t * height;
+
 	if (gstate.isTexCoordClampedS()) {
-		if (s > 1.0) s = 1.0;
-		if (s < 0) s = 0;
+		if (u2 > width) u2 = width;
+		else if (u2 < 0) s = 0;
 	} else {
-		// TODO: Does this work for negative coords?
-		s = fmod(s, 1.0);
+		u2 = u2 % width;
 	}
+
 	if (gstate.isTexCoordClampedT()) {
-		if (t > 1.0) t = 1.0;
-		if (t < 0.0) t = 0.0;
+		if (v2 > height) v2 = height;
+		else if (v2 < 0) v2 = 0;
 	} else {
-		// TODO: Does this work for negative coords?
-		t = fmod(t, 1.0);
+		v2 = v2 % height;
 	}
 
-	int width = 1 << (gstate.texsize[level] & 0xf);
-	int height = 1 << ((gstate.texsize[level]>>8) & 0xf);
-
-	u = s * width; // TODO: width-1 instead?
-	v = t * height; // TODO: width-1 instead?
+	u = u2;
+	v = v2;
 }
 
 static inline void GetTextureCoordinates(const VertexData& v0, const VertexData& v1, const VertexData& v2, int w0, int w1, int w2, float& s, float& t)
@@ -136,9 +136,9 @@ static inline void GetTextureCoordinates(const VertexData& v0, const VertexData&
 		float q0 = 1.f / v0.clippos.w;
 		float q1 = 1.f / v1.clippos.w;
 		float q2 = 1.f / v2.clippos.w;
-		float q = q0 * w0 + q1 * w1 + q2 * w2;
-		s = (v0.texturecoords.s() * q0 * w0 + v1.texturecoords.s() * q1 * w1 + v2.texturecoords.s() * q2 * w2) / q;
-		t = (v0.texturecoords.t() * q0 * w0 + v1.texturecoords.t() * q1 * w1 + v2.texturecoords.t() * q2 * w2) / q;
+		float q = 1.f / (q0 * w0 + q1 * w1 + q2 * w2);
+		s = (v0.texturecoords.s() * q0 * w0 + v1.texturecoords.s() * q1 * w1 + v2.texturecoords.s() * q2 * w2) * q;
+		t = (v0.texturecoords.t() * q0 * w0 + v1.texturecoords.t() * q1 * w1 + v2.texturecoords.t() * q2 * w2) * q;
 	} else if (gstate.getUVGenMode() == GE_TEXMAP_TEXTURE_MATRIX) {
 		// projection mapping, TODO: Move this code to TransformUnit!
 		Vec3<float> source;
@@ -157,55 +157,60 @@ static inline void GetTextureCoordinates(const VertexData& v0, const VertexData&
 	}
 }
 
-static inline u32 SampleNearest(int level, unsigned int u, unsigned int v)
+struct TextureLoadInfo {
+	GETextureFormat format;
+	u32 psp_address[8];
+	u8* host_address[8];
+	unsigned int buffer_width[8];
+};
+
+static inline u32 SampleNearest(const TextureLoadInfo& texture, int level, unsigned int u, unsigned int v)
 {
+	/*
 	GETextureFormat texfmt = gstate.getTextureFormat();
 	u32 texaddr = (gstate.texaddr[level] & 0xFFFFF0) | ((gstate.texbufwidth[level] << 8) & 0x0F000000);
 	u8* srcptr = (u8*)Memory::GetPointer(texaddr); // TODO: not sure if this is the right place to load from...?
 
 	// Special rules for kernel textures (PPGe), TODO: Verify!
-	int texbufwidth = (texaddr < PSP_GetUserMemoryBase()) ? gstate.texbufwidth[level] & 0x1FFF : gstate.texbufwidth[level] & 0x7FF;
+	unsigned int texbufwidth = (texaddr < PSP_GetUserMemoryBase()) ? gstate.texbufwidth[level] & 0x1FFF : gstate.texbufwidth[level] & 0x7FF;
+	*/
+	u8* srcptr = texture.host_address[level];
+	unsigned int texbufwidth = texture.buffer_width[level];
+	u32 val;
 
 	// TODO: Should probably check if textures are aligned properly...
 
-	if (texfmt == GE_TFMT_4444) {
-		srcptr += GetPixelDataOffset(16, texbufwidth*8, u, v);
+	switch(texture.format) {
+	case GE_TFMT_4444:
+		srcptr += GetPixelDataOffset<16>(texbufwidth*8, u, v);
 		return DecodeRGBA4444(*(u16*)srcptr);
-	} else if (texfmt == GE_TFMT_5551) {
-		srcptr += GetPixelDataOffset(16, texbufwidth*8, u, v);
+	case GE_TFMT_5551:
+		srcptr += GetPixelDataOffset<16>(texbufwidth*8, u, v);
 		return DecodeRGBA5551(*(u16*)srcptr);
-	} else if (texfmt == GE_TFMT_5650) {
-		srcptr += GetPixelDataOffset(16, texbufwidth*8, u, v);
+	case GE_TFMT_5650:
+		srcptr += GetPixelDataOffset<16>(texbufwidth*8, u, v);
 		return DecodeRGB565(*(u16*)srcptr);
-	} else if (texfmt == GE_TFMT_8888) {
-		srcptr += GetPixelDataOffset(32, texbufwidth*8, u, v);
+	case GE_TFMT_8888:
+		srcptr += GetPixelDataOffset<32>(texbufwidth*8, u, v);
 		return DecodeRGBA8888(*(u32*)srcptr);
-	} else if (texfmt == GE_TFMT_CLUT32) {
-		srcptr += GetPixelDataOffset(32, texbufwidth*8, u, v);
-
-		u32 val = srcptr[0] + (srcptr[1] << 8) + (srcptr[2] << 16) + (srcptr[3] << 24);
-
+	case GE_TFMT_CLUT32:
+		srcptr += GetPixelDataOffset<32>(texbufwidth*8, u, v);
+		val = srcptr[0] + (srcptr[1] << 8) + (srcptr[2] << 16) + (srcptr[3] << 24);
 		return LookupColor(GetClutIndex(val), level);
-	} else if (texfmt == GE_TFMT_CLUT16) {
-		srcptr += GetPixelDataOffset(16, texbufwidth*8, u, v);
-
-		u16 val = srcptr[0] + (srcptr[1] << 8);
-
+	case GE_TFMT_CLUT16:
+		srcptr += GetPixelDataOffset<16>(texbufwidth*8, u, v);
+		val = srcptr[0] + (srcptr[1] << 8);
 		return LookupColor(GetClutIndex(val), level);
-	} else if (texfmt == GE_TFMT_CLUT8) {
-		srcptr += GetPixelDataOffset(8, texbufwidth*8, u, v);
-
-		u8 val = *srcptr;
-
+	case GE_TFMT_CLUT8:
+		srcptr += GetPixelDataOffset<8>(texbufwidth*8, u, v);
+		val = *srcptr;
 		return LookupColor(GetClutIndex(val), level);
-	} else if (texfmt == GE_TFMT_CLUT4) {
-		srcptr += GetPixelDataOffset(4, texbufwidth*8, u, v);
-
-		u8 val = (u & 1) ? (srcptr[0] >> 4) : (srcptr[0] & 0xF);
-
+	case GE_TFMT_CLUT4:
+		srcptr += GetPixelDataOffset<4>(texbufwidth*8, u, v);
+		val = (u & 1) ? (srcptr[0] >> 4) : (srcptr[0] & 0xF);
 		return LookupColor(GetClutIndex(val), level);
-	} else {
-		ERROR_LOG(G3D, "Unsupported texture format: %x", texfmt);
+	default:
+		ERROR_LOG(G3D, "Unsupported texture format: %x", texture.format);
 		return 0;
 	}
 }
@@ -361,6 +366,7 @@ static inline bool StencilTestPassed(u8 stencil)
 		case GE_COMP_GEQUAL:
 			return (stencil >= ref);
 	}
+	return true;
 }
 
 static inline void ApplyStencilOp(int op, int x, int y)
@@ -467,6 +473,7 @@ static inline bool ColorTestPassed(Vec3<int> color)
 		case GE_COMP_NOTEQUAL:
 			return (color.r() != ref.r() || color.g() != ref.g() || color.b() != ref.b());
 	}
+	return true;
 }
 
 static inline bool AlphaTestPassed(int alpha)
@@ -500,6 +507,7 @@ static inline bool AlphaTestPassed(int alpha)
 		case GE_COMP_GEQUAL:
 			return (alpha >= ref);
 	}
+	return true;
 }
 
 static inline Vec3<int> GetSourceFactor(int source_a, const Vec4<int>& dst)
@@ -587,39 +595,44 @@ static inline Vec3<int> GetDestFactor(const Vec3<int>& source_rgb, int source_a,
 	}
 }
 
-static inline Vec3<int> AlphaBlendingResult(const Vec3<int>& source_rgb, int source_a, const Vec4<int> dst)
+static inline void AlphaBlendingResult(Vec3<int>& source_rgb, int source_a, const Vec4<int>& dst)
 {
 	Vec3<int> srcfactor = GetSourceFactor(source_a, dst);
 	Vec3<int> dstfactor = GetDestFactor(source_rgb, source_a, dst);
 
 	switch (gstate.getBlendEq()) {
 	case GE_BLENDMODE_MUL_AND_ADD:
-		return (source_rgb * srcfactor + dst.rgb() * dstfactor) / 255;
+		source_rgb = (source_rgb * srcfactor + dst.rgb() * dstfactor) / 255;
+		break;
 
 	case GE_BLENDMODE_MUL_AND_SUBTRACT:
-		return (source_rgb * srcfactor - dst.rgb() * dstfactor) / 255;
+		source_rgb = (source_rgb * srcfactor - dst.rgb() * dstfactor) / 255;
+		break;
 
 	case GE_BLENDMODE_MUL_AND_SUBTRACT_REVERSE:
-		return (dst.rgb() * dstfactor - source_rgb * srcfactor) / 255;
+		source_rgb = (dst.rgb() * dstfactor - source_rgb * srcfactor) / 255;
+		break;
 
 	case GE_BLENDMODE_MIN:
-		return Vec3<int>(std::min(source_rgb.r(), dst.r()),
+		source_rgb = Vec3<int>(std::min(source_rgb.r(), dst.r()),
 						std::min(source_rgb.g(), dst.g()),
 						std::min(source_rgb.b(), dst.b()));
+		break;
 
 	case GE_BLENDMODE_MAX:
-		return Vec3<int>(std::max(source_rgb.r(), dst.r()),
+		source_rgb = Vec3<int>(std::max(source_rgb.r(), dst.r()),
 						std::max(source_rgb.g(), dst.g()),
 						std::max(source_rgb.b(), dst.b()));
+		break;
 
 	case GE_BLENDMODE_ABSDIFF:
-		return Vec3<int>(std::abs(source_rgb.r() - dst.r()),
+		source_rgb = Vec3<int>(std::abs(source_rgb.r() - dst.r()),
 						std::abs(source_rgb.g() - dst.g()),
 						std::abs(source_rgb.b() - dst.b()));
+		break;
 
 	default:
 		ERROR_LOG(G3D, "Unknown blend function %x", gstate.getBlendEq());
-		return Vec3<int>();
 	}
 }
 
@@ -706,7 +719,15 @@ void DrawTriangle(const VertexData& v0, const VertexData& v1, const VertexData& 
 						GetTexelCoordinates(0, s, t, u, v);
 					}
 
-					Vec4<int> texcolor = Vec4<int>::FromRGBA(SampleNearest(0, u, v));
+					TextureLoadInfo texture;
+					texture.format = gstate.getTextureFormat();
+					texture.psp_address[0] = (gstate.texaddr[0] & 0xFFFFF0) | ((gstate.texbufwidth[0] << 8) & 0x0F000000);
+					texture.host_address[0] = (u8*)Memory::GetPointer(texture.psp_address[0]);
+
+					// Special rules for kernel textures (PPGe), TODO: Verify!
+					texture.buffer_width[0] = (texture.psp_address[0] < PSP_GetUserMemoryBase()) ? gstate.texbufwidth[0] & 0x1FFF : gstate.texbufwidth[0] & 0x7FF;
+
+					Vec4<int> texcolor(SampleNearest(texture, 0, u, v));
 					Vec4<int> out = GetTextureFunctionOutput(prim_color_rgb, prim_color_a, texcolor);
 					prim_color_rgb = out.rgb();
 					prim_color_a = out.a();
@@ -764,7 +785,7 @@ void DrawTriangle(const VertexData& v0, const VertexData& v1, const VertexData& 
 
 				if (gstate.isAlphaBlendEnabled() && !gstate.isModeClear()) {
 					Vec4<int> dst = Vec4<int>::FromRGBA(GetPixelColor(p.x, p.y));
-					prim_color_rgb = AlphaBlendingResult(prim_color_rgb, prim_color_a, dst);
+					AlphaBlendingResult(prim_color_rgb, prim_color_a, dst);
 				}
 				if (prim_color_rgb.r() > 255) prim_color_rgb.r() = 255;
 				if (prim_color_rgb.g() > 255) prim_color_rgb.g() = 255;
