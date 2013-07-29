@@ -160,7 +160,7 @@ void CopyToCurrentFboFromRam(u8* data, int srcwidth, int srcheight, int dstwidth
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, (GLsizei)srcwidth, (GLsizei)srcheight, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
 	} else {
 		// TODO: This should probably be converted in a shader instead..
-		u32 buf[srcwidth*srcheight];
+		u32 *buf = new u32[srcwidth*srcheight];
 		for (int y = 0; y < srcheight; ++y) {
 			for (int x = 0; x < srcwidth; ++x) {
 				u16 src = *(u16*)&fb[2*x + 2*y*gstate.FrameBufStride()];
@@ -175,6 +175,8 @@ void CopyToCurrentFboFromRam(u8* data, int srcwidth, int srcheight, int dstwidth
 		}
 
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, (GLsizei)srcwidth, (GLsizei)srcheight, 0, GL_RGBA, GL_UNSIGNED_BYTE, buf);
+
+		delete [] buf;
 	}
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
