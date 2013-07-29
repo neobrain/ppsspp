@@ -234,7 +234,7 @@ void TransformUnit::SubmitSpline(void* control_points, void* indices, int count_
 
 	int num_patches_u = count_u - 3;
 	int num_patches_v = count_v - 3;
-	SplinePatch patches[num_patches_u * num_patches_v];
+	SplinePatch *patches = new SplinePatch[num_patches_u * num_patches_v];
 
 	for (int patch_u = 0; patch_u < num_patches_u; ++patch_u) {
 		for (int patch_v = 0; patch_v < num_patches_v; ++patch_v) {
@@ -282,6 +282,8 @@ void TransformUnit::SubmitSpline(void* control_points, void* indices, int count_
 			}
 		}
 	}
+
+	delete [] patches;
 }
 
 void TransformUnit::SubmitPrimitive(void* vertices, void* indices, u32 prim_type, int vertex_count, u32 vertex_type)
