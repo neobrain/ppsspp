@@ -18,7 +18,7 @@
 #include "../GPUState.h"
 #include "../GLES/VertexDecoder.h"
 
-#include "TransformPipeline.h"
+#include "TransformPipelineSoftware.h"
 #include "Clipper.h"
 #include "Lighting.h"
 
@@ -50,19 +50,19 @@ private:
 	BaseType values[4*4];
 };
 
-WorldCoords TransformUnit::ModelToWorld(const ModelCoords& coords)
+WorldCoords TransformUnitSoftware::ModelToWorld(const ModelCoords& coords)
 {
 	Mat3x3<float> world_matrix(gstate.worldMatrix);
 	return WorldCoords(world_matrix * coords) + Vec3<float>(gstate.worldMatrix[9], gstate.worldMatrix[10], gstate.worldMatrix[11]);
 }
 
-ViewCoords TransformUnit::WorldToView(const WorldCoords& coords)
+ViewCoords TransformUnitSoftware::WorldToView(const WorldCoords& coords)
 {
 	Mat3x3<float> view_matrix(gstate.viewMatrix);
 	return ViewCoords(view_matrix * coords) + Vec3<float>(gstate.viewMatrix[9], gstate.viewMatrix[10], gstate.viewMatrix[11]);
 }
 
-ClipCoords TransformUnit::ViewToClip(const ViewCoords& coords)
+ClipCoords TransformUnitSoftware::ViewToClip(const ViewCoords& coords)
 {
 	Vec4<float> coords4(coords.x, coords.y, coords.z, 1.0f);
 	Mat4x4<float> projection_matrix(gstate.projMatrix);
@@ -99,12 +99,12 @@ static inline ScreenCoords ClipToScreenInternal(const ClipCoords& coords, bool s
 	return ScreenCoords(retx * 16, rety * 16, retz);
 }
 
-ScreenCoords TransformUnit::ClipToScreen(const ClipCoords& coords)
+ScreenCoords TransformUnitSoftware::ClipToScreen(const ClipCoords& coords)
 {
 	return ClipToScreenInternal(coords, false);
 }
 
-DrawingCoords TransformUnit::ScreenToDrawing(const ScreenCoords& coords)
+DrawingCoords TransformUnitSoftware::ScreenToDrawing(const ScreenCoords& coords)
 {
 	DrawingCoords ret;
 	// TODO: What to do when offset > coord?
@@ -114,7 +114,7 @@ DrawingCoords TransformUnit::ScreenToDrawing(const ScreenCoords& coords)
 	return ret;
 }
 
-ScreenCoords TransformUnit::DrawingToScreen(const DrawingCoords& coords)
+ScreenCoords TransformUnitSoftware::DrawingToScreen(const DrawingCoords& coords)
 {
 	ScreenCoords ret;
 	ret.x = (((u32)coords.x * 16 + (gstate.offsetx&0xffff)));
@@ -184,12 +184,12 @@ static VertexData ReadVertex(VertexReader& vreader)
 
 	if (!gstate.isModeThrough()) {
 		vertex.modelpos = ModelCoords(pos[0], pos[1], pos[2]);
-		vertex.worldpos = WorldCoords(TransformUnit::ModelToWorld(vertex.modelpos));
-		vertex.clippos = ClipCoords(TransformUnit::ViewToClip(TransformUnit::WorldToView(vertex.worldpos)));
+		vertex.worldpos = WorldCoords(TransformUnitSoftware::ModelToWorld(vertex.modelpos));
+		vertex.clippos = ClipCoords(TransformUnitSoftware::ViewToClip(TransformUnitSoftware::WorldToView(vertex.worldpos)));
 		vertex.screenpos = ClipToScreenInternal(vertex.clippos);
 
 		if (vreader.hasNormal()) {
-			vertex.worldnormal = TransformUnit::ModelToWorld(vertex.normal) - Vec3<float>(gstate.worldMatrix[9], gstate.worldMatrix[10], gstate.worldMatrix[11]);
+			vertex.worldnormal = TransformUnitSoftware::ModelToWorld(vertex.normal) - Vec3<float>(gstate.worldMatrix[9], gstate.worldMatrix[10], gstate.worldMatrix[11]);
 			vertex.worldnormal /= vertex.worldnormal.Length(); // TODO: Shouldn't be necessary..
 		}
 
@@ -214,7 +214,7 @@ struct SplinePatch {
 	int type;
 };
 
-void TransformUnit::SubmitSpline(void* control_points, void* indices, int count_u, int count_v, int type_u, int type_v, u32 prim_type, u32 vertex_type)
+void TransformUnitSoftware::SubmitSpline(void* control_points, void* indices, int count_u, int count_v, int type_u, int type_v, u32 prim_type, u32 vertex_type)
 {
 	VertexDecoder vdecoder;
 	vdecoder.SetVertexType(vertex_type);
@@ -234,7 +234,7 @@ void TransformUnit::SubmitSpline(void* control_points, void* indices, int count_
 
 	int num_patches_u = count_u - 3;
 	int num_patches_v = count_v - 3;
-	SplinePatch patches[num_patches_u * num_patches_v];
+	static SplinePatch patches[64 * 64];
 
 	for (int patch_u = 0; patch_u < num_patches_u; ++patch_u) {
 		for (int patch_v = 0; patch_v < num_patches_v; ++patch_v) {
@@ -284,7 +284,7 @@ void TransformUnit::SubmitSpline(void* control_points, void* indices, int count_
 	}
 }
 
-void TransformUnit::SubmitPrimitive(void* vertices, void* indices, u32 prim_type, int vertex_count, u32 vertex_type)
+void TransformUnitSoftware::SubmitPrimitive(void* vertices, void* indices, u32 prim_type, int vertex_count, u32 vertex_type)
 {
 	// TODO: Cache VertexDecoder objects
 	VertexDecoder vdecoder;

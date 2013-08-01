@@ -23,7 +23,7 @@
 #include "../../Core/HLE/sceGe.h"
 
 #include "SoftGpu.h"
-#include "TransformPipeline.h"
+#include "TransformPipelineSoftware.h"
 #include "Colors.h"
 
 static GLuint temp_texture = 0;
@@ -160,7 +160,7 @@ void CopyToCurrentFboFromRam(u8* data, int srcwidth, int srcheight, int dstwidth
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, (GLsizei)srcwidth, (GLsizei)srcheight, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
 	} else {
 		// TODO: This should probably be converted in a shader instead..
-		u32 buf[srcwidth*srcheight];
+		u32 *buf = new u32[srcwidth*srcheight];
 		for (int y = 0; y < srcheight; ++y) {
 			for (int x = 0; x < srcwidth; ++x) {
 				u16 src = *(u16*)&fb[2*x + 2*y*gstate.FrameBufStride()];
@@ -175,6 +175,7 @@ void CopyToCurrentFboFromRam(u8* data, int srcwidth, int srcheight, int dstwidth
 		}
 
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, (GLsizei)srcwidth, (GLsizei)srcheight, 0, GL_RGBA, GL_UNSIGNED_BYTE, buf);
+		delete[] buf;
 	}
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
@@ -291,7 +292,7 @@ void SoftGPU::ExecuteOp(u32 op, u32 diff)
 				indices = Memory::GetPointer(gstate_c.indexAddr);
 			}
 
-			TransformUnit::SubmitPrimitive(verts, indices, type, count, gstate.vertType);
+			TransformUnitSoftware::SubmitPrimitive(verts, indices, type, count, gstate.vertType);
 		}
 		break;
 
@@ -331,7 +332,7 @@ void SoftGPU::ExecuteOp(u32 op, u32 diff)
 				break;
 			}
 
-			TransformUnit::SubmitSpline(control_points, indices, sp_ucount, sp_vcount, sp_utype, sp_vtype, gstate.patchprimitive&3, gstate.vertType);
+			TransformUnitSoftware::SubmitSpline(control_points, indices, sp_ucount, sp_vcount, sp_utype, sp_vtype, gstate.patchprimitive&3, gstate.vertType);
 			DEBUG_LOG(G3D,"DL DRAW SPLINE: %i x %i, %i x %i", sp_ucount, sp_vcount, sp_utype, sp_vtype);
 		}
 		break;

@@ -322,6 +322,7 @@ public:
 	Vec4() {}
 	Vec4(const T a[4]) : x(a[0]), y(a[1]), z(a[2]), w(a[3]) {}
 	Vec4(const T& _x, const T& _y, const T& _z, const T& _w) : x(_x), y(_y), z(_z), w(_w) {}
+	explicit Vec4(unsigned int rgba);
 
 	template<typename T2>
 	Vec4<T2> Cast() const
@@ -475,6 +476,21 @@ Vec4<T> operator * (const V& f, const Vec4<T>& vec)
 }
 
 typedef Vec4<float> Vec4f;
+
+template<>
+inline Vec4<int>::Vec4(unsigned int rgba)
+	: x(rgba & 0xFF), y((rgba >> 8) & 0xFF), z((rgba >> 16) & 0xFF), w((rgba >> 24) & 0xFF)
+{
+}
+
+template<>
+inline Vec4<float>::Vec4(unsigned int rgba)
+	: x((rgba & 0xFF) * (1.0f/255.0f)),
+	  y(((rgba >> 8 ) & 0xFF) * (1.0f/255.0f)),
+	  z(((rgba >> 16) & 0xFF) * (1.0f/255.0f)),
+	  w(((rgba >> 24) & 0xFF) * (1.0f/255.0f))
+{
+}
 
 template<typename BaseType>
 class Mat3x3

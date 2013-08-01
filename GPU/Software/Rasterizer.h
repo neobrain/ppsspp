@@ -17,7 +17,7 @@
 
 #pragma once
 
-#include "TransformPipeline.h" // for DrawingCoords
+#include "TransformPipelineSoftware.h" // for DrawingCoords
 
 namespace Rasterizer {
 
