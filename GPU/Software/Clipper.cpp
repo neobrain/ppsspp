@@ -281,9 +281,9 @@ void ProcessTriangle(VertexData& v0, VertexData& v1, VertexData& v2)
 		if(indices[i] != SKIP_FLAG)
 		{
 			VertexData data[3] = { *Vertices[indices[i]], *Vertices[indices[i+1]], *Vertices[indices[i+2]] };
-			data[0].screenpos = TransformUnit::ClipToScreen(data[0].clippos);
-			data[1].screenpos = TransformUnit::ClipToScreen(data[1].clippos);
-			data[2].screenpos = TransformUnit::ClipToScreen(data[2].clippos);
+			data[0].screenpos = TransformUnitSoftware::ClipToScreen(data[0].clippos);
+			data[1].screenpos = TransformUnitSoftware::ClipToScreen(data[1].clippos);
+			data[2].screenpos = TransformUnitSoftware::ClipToScreen(data[2].clippos);
 			Rasterizer::DrawTriangle(data[0], data[1], data[2]);
 		}
 	}

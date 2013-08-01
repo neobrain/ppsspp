@@ -59,12 +59,13 @@ void InitGfxState()
 	}
 
 	switch (PSP_CoreParameter().gpuCore) {
-	case GPU_NULL:
+	/*case GPU_NULL:
 		gpu = new NullGPU();
 		break;
 	case GPU_GLES:
 		gpu = new GLES_GPU();
-		break;
+		break;*/
+	  default:
 	case GPU_SOFTWARE:
 		gpu = new SoftGPU();
 		break;

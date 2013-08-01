@@ -626,9 +626,9 @@ static inline void AlphaBlendingResult(Vec3<int>& source_rgb, int source_a, cons
 		break;
 
 	case GE_BLENDMODE_ABSDIFF:
-		source_rgb = Vec3<int>(std::abs(source_rgb.r() - dst.r()),
-						std::abs(source_rgb.g() - dst.g()),
-						std::abs(source_rgb.b() - dst.b()));
+		source_rgb = Vec3<int>(::abs(source_rgb.r() - dst.r()),
+						::abs(source_rgb.g() - dst.g()),
+						::abs(source_rgb.b() - dst.b()));
 		break;
 
 	default:
@@ -654,10 +654,10 @@ void DrawTriangle(const VertexData& v0, const VertexData& v1, const VertexData& 
 
 	DrawingCoords scissorTL(gstate.getScissorX1(), gstate.getScissorY1(), 0);
 	DrawingCoords scissorBR(gstate.getScissorX2(), gstate.getScissorY2(), 0);
-	minX = std::max(minX, (int)TransformUnit::DrawingToScreen(scissorTL).x);
-	maxX = std::min(maxX, (int)TransformUnit::DrawingToScreen(scissorBR).x);
-	minY = std::max(minY, (int)TransformUnit::DrawingToScreen(scissorTL).y);
-	maxY = std::min(maxY, (int)TransformUnit::DrawingToScreen(scissorBR).y);
+	minX = std::max(minX, (int)TransformUnitSoftware::DrawingToScreen(scissorTL).x);
+	maxX = std::min(maxX, (int)TransformUnitSoftware::DrawingToScreen(scissorBR).x);
+	minY = std::max(minY, (int)TransformUnitSoftware::DrawingToScreen(scissorTL).y);
+	maxY = std::min(maxY, (int)TransformUnitSoftware::DrawingToScreen(scissorBR).y);
 
 	int bias0 = IsRightSideOrFlatBottomLine(v0.screenpos.xy(), v1.screenpos.xy(), v2.screenpos.xy()) ? -1 : 0;
 	int bias1 = IsRightSideOrFlatBottomLine(v1.screenpos.xy(), v2.screenpos.xy(), v0.screenpos.xy()) ? -1 : 0;
@@ -678,7 +678,7 @@ void DrawTriangle(const VertexData& v0, const VertexData& v1, const VertexData& 
 											w0 += orient2dIncX(d12.y)*16,
 											w1 += orient2dIncX(-d02.y)*16,
 											w2 += orient2dIncX(d01.y)*16) {
-			DrawingCoords p = TransformUnit::ScreenToDrawing(pprime);
+			DrawingCoords p = TransformUnitSoftware::ScreenToDrawing(pprime);
 
 			// If p is on or inside all edges, render pixel
 			// TODO: Should we render if the pixel is both on the left and the right side? (i.e. degenerated triangle)

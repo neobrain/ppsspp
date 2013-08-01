@@ -105,7 +105,7 @@ struct VertexData
 	Vec3<int> color1;
 };
 
-class TransformUnit
+class TransformUnitSoftware
 {
 public:
 	static WorldCoords ModelToWorld(const ModelCoords& coords);

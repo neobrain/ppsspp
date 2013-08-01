@@ -23,7 +23,7 @@
 #include "../../Core/HLE/sceGe.h"
 
 #include "SoftGpu.h"
-#include "TransformPipeline.h"
+#include "TransformPipelineSoftware.h"
 #include "Colors.h"
 
 static GLuint temp_texture = 0;
@@ -292,7 +292,7 @@ void SoftGPU::ExecuteOp(u32 op, u32 diff)
 				indices = Memory::GetPointer(gstate_c.indexAddr);
 			}
 
-			TransformUnit::SubmitPrimitive(verts, indices, type, count, gstate.vertType);
+			TransformUnitSoftware::SubmitPrimitive(verts, indices, type, count, gstate.vertType);
 		}
 		break;
 
@@ -332,7 +332,7 @@ void SoftGPU::ExecuteOp(u32 op, u32 diff)
 				break;
 			}
 
-			TransformUnit::SubmitSpline(control_points, indices, sp_ucount, sp_vcount, sp_utype, sp_vtype, gstate.patchprimitive&3, gstate.vertType);
+			TransformUnitSoftware::SubmitSpline(control_points, indices, sp_ucount, sp_vcount, sp_utype, sp_vtype, gstate.patchprimitive&3, gstate.vertType);
 			DEBUG_LOG(G3D,"DL DRAW SPLINE: %i x %i, %i x %i", sp_ucount, sp_vcount, sp_utype, sp_vtype);
 		}
 		break;
